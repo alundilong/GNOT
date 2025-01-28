@@ -22,6 +22,7 @@ from data_utils import get_dataset, get_model, get_loss_func, collate_op, MIODat
 from utils import get_seed, get_num_params
 from models.optimizer import Adam, AdamW
 
+import math
 
 
 '''
@@ -107,7 +108,7 @@ def train(model, loss_func, metric_func,
         val_metric = val_result["metric"].sum()
 
 
-        if val_metric < best_val_metric:
+        if val_metric < best_val_metric or math.isnan(val_metric):
             best_val_epoch = epoch
             best_val_metric = val_metric
 
