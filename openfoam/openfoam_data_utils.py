@@ -123,7 +123,7 @@ class openfoam_data_single_case_loader:
         self.mesh = mesh
 
 class openfoam_data_loader:
-    def __init__(self, root_dir, dt, duration, rank, dtype=torch.float32, bc_names=[]):
+    def __init__(self, root_dir, dt, duration, rank, dtype=torch.float32, bc_names=[], max_cases=2):
 
         entries = os.listdir(root_dir)
         # Filter entries to include only directories
@@ -131,15 +131,15 @@ class openfoam_data_loader:
 
         self.data_all = []
         for i, directory in enumerate(directories):
-            if i > 1:
+            if i + 1 > max_cases:
                 break
             path = os.path.abspath(os.path.join(root_dir, directory))
             print(f'{i} {path}')
-            loader = openfoam_data_single_case_loader(path,dt,duration,rank=device,bc_names=bc_names)
+            loader = openfoam_data_single_case_loader(path,dt,duration,rank,bc_names=bc_names)
             single = []
-            single.append(loader.X)
-            single.append(loader.Y)
-            single.append(None)
+            single.append(loader.X.numpy())
+            single.append(loader.Y.numpy())
+            single.append(np.array([0.0]))
             single.append(None)
             self.data_all.append(single)
 
