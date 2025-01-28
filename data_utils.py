@@ -1,5 +1,7 @@
 #!/usr/bin/env python  
 #-*- coding:utf-8 _*-
+import sys
+sys.path.append('openfoam/')
 import os
 import torch
 import numpy as np
@@ -28,12 +30,14 @@ from utils import TorchQuantileTransformer, UnitTransformer, PointWiseUnitTransf
 from models.cgpt import CGPTNO
 from models.mmgpt import GNOT
 
+from openfoam.openfoam_data_utils import openfoam_data_loader
 
 
 def get_dataset(args):
     if args.dataset == "ns2d":
         train_path = './data/ns2d_1100_train.pkl'
         test_path = './data/ns2d_1100_test.pkl'
+
     elif args.dataset == "inductor2d":
         train_path = "./data/inductor2d_1100_train.pkl"
         test_path = "./data/inductor2d_1100_test.pkl"
@@ -42,21 +46,26 @@ def get_dataset(args):
         train_path = "./data/heat2d_1100_train.pkl"
         test_path = "./data/heat2d_1100_test.pkl"
 
+    elif args.dataset == "porousmelting4d":
+        train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
+        test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
+
     else:
         raise NotImplementedError
 
     args.train_num = int(args.train_num) if args.train_num not in ['all', 'none'] else args.train_num
     args.test_num = int(args.test_num) if args.test_num not in ['all', 'none'] else args.test_num
 
-    train_dataset = MIODataset(train_path, name=args.dataset, train=True, train_num=args.train_num,
-                               sort_data=args.sort_data,
-                               normalize_y=args.use_normalizer,
-                               normalize_x=args.normalize_x)
-    test_dataset = MIODataset(test_path, name=args.dataset, train=False, test_num=args.test_num,
-                              sort_data=args.sort_data,
-                              normalize_y=args.use_normalizer,
-                              normalize_x=args.normalize_x, y_normalizer=train_dataset.y_normalizer,
-                              x_normalizer=train_dataset.x_normalizer, up_normalizer=train_dataset.up_normalizer)
+    train_dataset = MIODataset(train_path, openfoam=args.openfoam, name=args.dataset, train=True, train_num=args.train_num,
+            sort_data=args.sort_data,
+            normalize_y=args.use_normalizer,
+            normalize_x=args.normalize_x)
+    test_dataset = MIODataset(test_path, openfoam=args.openfoam, name=args.dataset, train=False, test_num=args.test_num,
+            sort_data=args.sort_data,
+            normalize_y=args.use_normalizer,
+            normalize_x=args.normalize_x, y_normalizer=train_dataset.y_normalizer,
+            x_normalizer=train_dataset.x_normalizer, up_normalizer=train_dataset.up_normalizer)
+
 
     args.dataset_config = train_dataset.config
 
@@ -251,7 +260,7 @@ def collate_op(items):
     [X, Y, theta, (f1, f2, ...)], input functions could be None
 '''
 class MIODataset(DGLDataset):
-    def __init__(self, data_path, name=' ', train=True, test=False, train_num=None, test_num=None, use_cache=True,normalize_y=False, y_normalizer=None, x_normalizer=None, up_normalizer=None, normalize_x=False,sort_data=False):
+    def __init__(self, data_path, openfoam=False, name=' ', train=True, test=False, train_num=None, test_num=None, use_cache=True,normalize_y=False, y_normalizer=None, x_normalizer=None, up_normalizer=None, normalize_x=False,sort_data=False):
 
         self.data_path = data_path
         self.cached_path = self.data_path[:-4] + '_' + 'train' + '_cached' +self.data_path[-4:] if train else  self.data_path[:-4] + '_' + 'test' + '_cached' +self.data_path[-4:]
@@ -267,7 +276,16 @@ class MIODataset(DGLDataset):
         ####  debug timing
         time0 = time.time()
         if not os.path.exists(self.cached_path):
-            data_all = pickle.load(open(self.data_path, "rb"))
+            data_all = []
+            if not openfoam:
+                data_all = pickle.load(open(self.data_path, "rb"))
+            else:
+                device = torch.device('cpu')
+                bc_names=['defaultFaces']
+                dt = 10
+                duration = 1000
+                loader = openfoam_data_loader(self.data_path,dt,duration,rank=device,bc_names=bc_names)
+                data_all = loader.data_all
             print('Load dataset finished {}'.format(time.time()-time0))
             #### initialize dataset
             self.train = train
