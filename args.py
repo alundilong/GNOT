@@ -12,7 +12,10 @@ def get_args():
     parser = argparse.ArgumentParser(description='GNOT for operator learning')
     parser.add_argument('--dataset',type=str,
                         default='ns2d',
-                        choices = ['heat2d','ns2d','inductor2d','heatsink3d','ns2d_time','darcy2d',])
+                        choices = ['heat2d','ns2d','inductor2d','heatsink3d','ns2d_time','darcy2d','melting',])
+
+    parser.add_argument('--openfoam', action='store_true', default=False,
+                        help='cfd data with openfoam format')
 
 
     parser.add_argument('--component',type=str,
