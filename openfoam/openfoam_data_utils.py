@@ -12,7 +12,7 @@ from openfoam_file_writer import writeScalarVolType, writeVectorVolType
 from meshLoaderOF.meshLoaderOF import meshLoaderOF
 from fieldLoaderOF.porousFieldLoaderOF import porousFieldLoaderOF
 
-class openfoam_data_loader:
+class openfoam_data_single_case_loader:
     def __init__(self, path, dt, duration, rank, dtype=torch.float32, bc_names=[]):
         sol = path 
         nt = int(duration/dt)+1
@@ -121,7 +121,27 @@ class openfoam_data_loader:
         self.X = a_data
         self.Y = u_data
         self.mesh = mesh
-        
+
+class openfoam_data_loader:
+    def __init__(self, root_dir, dt, duration, rank, dtype=torch.float32, bc_names=[]):
+
+        entries = os.listdir(root_dir)
+        # Filter entries to include only directories
+        directories = [entry for entry in entries if os.path.isdir(os.path.join(root_dir, entry))]
+
+        self.data_all = []
+        for i, directory in enumerate(directories):
+            if i > 1:
+                break
+            path = os.path.abspath(os.path.join(root_dir, directory))
+            print(f'{i} {path}')
+            loader = openfoam_data_single_case_loader(path,dt,duration,rank=device,bc_names=bc_names)
+            single = []
+            single.append(loader.X)
+            single.append(loader.Y)
+            single.append(None)
+            single.append(None)
+            self.data_all.append(single)
 
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -129,5 +149,8 @@ if __name__ == "__main__":
     path = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs/max_16_min_11_points_8/'
     dt = 10
     duration = 1000
-    data = openfoam_data_loader(path,dt,duration,rank=device,bc_names=bc_names)
+    #single_loader = openfoam_data_single_case_loader(path,dt,duration,rank=device,bc_names=bc_names)
+
+    root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs/'
+    loader = openfoam_data_loader(root_dir,dt,duration,rank=device,bc_names=bc_names)
 
