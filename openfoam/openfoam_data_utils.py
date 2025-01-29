@@ -94,20 +94,20 @@ class openfoam_data_single_case_loader:
         Cx = mesh.Cx
         Cy = mesh.Cy
         Cz = mesh.Cz
-        nCells = len(Cx)
+        nCoordinate = len(Cx)
         # nf includes (x, time, U0)
         a_nfield = 10 # x,y,z,time,U0,p_rgh,T,alpha,m
-        n_total = nCells*nt
+        n_total = nCoordinate*nt
         a_data = torch.zeros((n_total,a_nfield),dtype=dtype)
-        # input data has bs, nCells,ny,nz, nt, nf
+        # input data has bs, nCoordinate,ny,nz, nt, nf
         a_data[:,0] = Cx.repeat(nt)
         a_data[:,1] = Cy.repeat(nt)
         a_data[:,2] = Cz.repeat(nt)
         time = torch.linspace(0,duration,nt,dtype=dtype)
-        a_data[:,3] = time.repeat(nCells)
+        a_data[:,3] = time.repeat(nCoordinate)
         a_data[:,4] = U0x.repeat(nt)
         a_data[:,5] = U0y.repeat(nt)
-        #a_data[:,:,:,6] = U0z.reshape(1,nCells,ny,nz,1).repeat(bz,1,1,1,nt)
+        #a_data[:,:,:,6] = U0z.reshape(1,nCoordinate,ny,nz,1).repeat(bz,1,1,1,nt)
         a_data[:,6] = p_rgh0.repeat(nt)
         a_data[:,7] = T0.repeat(nt)
         a_data[:,8] = alpha0.repeat(nt)
@@ -115,13 +115,14 @@ class openfoam_data_single_case_loader:
 
         u_nfield = 5 # U,p_rgh,T,alpha
         u_data = torch.zeros((n_total,u_nfield),dtype=dtype)
-        #u_data[:,:,:,0] = U0.reshape(1,nCells,1).repeat(bz,1,nt)
+        #u_data[:,:,:,0] = U0.reshape(1,nCoordinate,1).repeat(bz,1,nt)
         field = porousFieldLoaderOF(mesh,rank,bc_names=bc_names)
         #print(field.data[:,0,0])
         u_data[:,:] = field.data.reshape(-1,u_nfield)
         
         self.X = a_data
         self.Y = u_data
+        self.boundary_coordinates = a_data[:nCoordinate,:3]
         self.mesh = mesh
 
 class openfoam_data_loader:
@@ -142,7 +143,7 @@ class openfoam_data_loader:
             single.append(loader.X.numpy())
             single.append(loader.Y.numpy())
             single.append(np.array([0.0]))
-            single.append(None)
+            single.append([loader.boundary_coordinates.numpy()])
             self.data_all.append(single)
 
 if __name__ == "__main__":
