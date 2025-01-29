@@ -24,6 +24,9 @@ from models.optimizer import Adam, AdamW
 
 import math
 
+from model_utils.utils import load_checkpoint, save_checkpoint
+from datetime import datetime
+
 
 '''
     A general code framework for training neural operator on irregular domains
@@ -40,6 +43,7 @@ EPOCH_SCHEDULERS = ['ReduceLROnPlateau', 'StepLR', 'MultiplicativeLR',
 def train(model, loss_func, metric_func,
               train_loader, valid_loader,
               optimizer, lr_scheduler,
+              save_every,
               epochs=10,
               writer=None,
               device="cuda",
@@ -159,6 +163,30 @@ def train(model, loss_func, metric_func,
             optimizer_state=optimizer.state_dict()
         )
         pickle.dump(result, open(os.path.join(model_save_path, result_name),'wb'))
+
+        if epoch > 0 :
+            if (epoch+1) % save_every == 0 or epoch == end_epoch-1:
+                train_save_dir = model_save_path
+                train_save_name = model_name
+
+                ckpt = {
+                    'model': model.state_dict(),
+                    'epoch': epoch,
+                    'optimizer': optimizer.state_dict(),
+                    'scheduler': scheduler.state_dict(),
+                }
+                ckpt_dir = train_save_dir
+                if not os.path.exists(ckpt_dir):
+                    os.makedirs(ckpt_dir)
+
+                now = datetime.now()
+                formatted_timestamp = now.strftime("%Y-%m-%d_%H:%M:%S")
+
+                train_save_name = f'{epoch}_{formatted_timestamp}_{train_save_name}'
+                save_checkpoint(ckpt, os.path.join(ckpt_dir, f'{train_save_name}.ckpt'), max_keep=10)
+                del ckpt
+                print(f"Epoch {epoch} | Training checkpoint saved at {ckpt_dir}/{train_save_name}")
+
     return result
 
 
@@ -287,9 +315,12 @@ if __name__ == "__main__":
 
     time_start = time.time()
 
+    save_every = args.save_every
+
     result = train(model, loss_func, metric_func,
                        train_loader, test_loader,
                        optimizer, scheduler,
+                       save_every,
                        epochs=epochs,
                        grad_clip=args.grad_clip,
                        patience=None,

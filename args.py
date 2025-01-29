@@ -21,7 +21,8 @@ def get_args():
     parser.add_argument('--component',type=str,
                         default='all',)
 
-
+    parser.add_argument('--save-every', type=int, default=1000, metavar='save model every given epoch',
+                        help='save model every given epoch (default: 1000)')
 
     parser.add_argument('--seed', type=int, default=2023, metavar='Seed',
                         help='random seed (default: 1127802)')
