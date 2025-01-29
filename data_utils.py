@@ -290,6 +290,27 @@ class MIODataset(DGLDataset):
                 duration = 1000
                 loader = openfoam_data_loader(self.data_path,dt,duration,rank=device,bc_names=bc_names)
                 data_all = loader.data_all
+        
+            ## Your list of 2D coordinates
+            #coordinates = data_all[0][0]
+            ## Open a file in write mode
+            #with open('x.dat', 'w') as file:
+            #    # Iterate through each coordinate and write it to the file
+            #    for coord in coordinates:
+            #        file.write(f"{coord[0]} {coord[1]}\n")
+
+            ## Your list of 2D coordinates
+            #coordinates = data_all[0][3][0]
+            ## Open a file in write mode
+            #with open('input_f.dat', 'w') as file:
+            #    # Iterate through each coordinate and write it to the file
+            #    for coord in coordinates:
+            #        file.write(f"{coord[0]} {coord[1]}\n")
+
+            #print(f'{len(data_all[0][0])}{data_all[0][0]}')
+            #print(f'{data_all[0][1]}')
+            #print(f'{data_all[0][2]}')
+            #print(f'{len(data_all[0][3][0])} {data_all[0][3]}')
             print('Load dataset finished {}'.format(time.time()-time0))
             #### initialize dataset
             self.train = train
