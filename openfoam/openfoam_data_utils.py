@@ -12,6 +12,8 @@ from openfoam_file_writer import writeScalarVolType, writeVectorVolType
 from meshLoaderOF.meshLoaderOF import meshLoaderOF
 from fieldLoaderOF.porousFieldLoaderOF import porousFieldLoaderOF
 
+import pickle
+
 class openfoam_data_single_case_loader:
     def __init__(self, path, dt, duration, rank, dtype=torch.float32, bc_names=[]):
         sol = path 
@@ -153,4 +155,7 @@ if __name__ == "__main__":
 
     root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs/'
     loader = openfoam_data_loader(root_dir,dt,duration,rank=device,bc_names=bc_names)
+    
+    pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle/'
+    pickle.dump(loader.data_all, open(os.path.join(pickle_dir, 'porousmelting_train.pkl'),'wb'))
 

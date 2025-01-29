@@ -47,8 +47,12 @@ def get_dataset(args):
         test_path = "./data/heat2d_1100_test.pkl"
 
     elif args.dataset == "porousmelting4d":
-        train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
-        test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
+        if args.openfoam:
+            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
+            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
+        else:
+            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle/porousmelting_train.pkl"
+            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle/porousmelting_train.pkl"
 
     else:
         raise NotImplementedError
