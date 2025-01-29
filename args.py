@@ -17,6 +17,8 @@ def get_args():
     parser.add_argument('--openfoam', action='store_true', default=False,
                         help='cfd data with openfoam format')
 
+    parser.add_argument('--resume', action='store_true', default=False,
+                        help='resume training')
 
     parser.add_argument('--component',type=str,
                         default='all',)

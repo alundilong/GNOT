@@ -264,14 +264,17 @@ if __name__ == "__main__":
     metric_func = get_loss_func(name='rel2', args=args, regularizer=False, normalizer=args.normalizer)
 
     model = get_model(args)
+    if args.resume:
+        ckpt = load_checkpoint('./data/checkpoints/')
+        model.load_state_dict(ckpt['model'])
     model = model.to(device)
     print(f"\nModel: {model.__name__}\t Number of params: {get_num_params(model)}")
-
 
     path_prefix = args.dataset  + '_{}_'.format(args.component) + model.__name__ + args.comment + time.strftime('_%m%d_%H_%M_%S')
     model_path, result_path = path_prefix + '.pt', path_prefix + '.pkl'
 
     print(f"Saving model and result in ./../models/checkpoints/{model_path}\n")
+
 
 
     if args.use_tb:
