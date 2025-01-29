@@ -122,7 +122,7 @@ class openfoam_data_single_case_loader:
         
         self.X = a_data
         self.Y = u_data
-        self.boundary_coordinates = a_data[:nCoordinate,:3]
+        self.boundary_coordinates = a_data[n_cells:nCoordinate,:3]
         self.mesh = mesh
 
 class openfoam_data_loader:
