@@ -68,3 +68,24 @@ def ensure_dir(dir_name: str):
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
 
+def check_nan_and_stats_in_model(model):
+    stats = {}
+    for name, param in model.named_parameters():
+        if torch.isnan(param.data).any():
+            print(f"NaN found in weights of {name}")
+        if param.grad is not None and torch.isnan(param.grad).any():
+            print(f"NaN found in gradients of {name}")
+
+        # Gather statistics
+        stats[name] = {
+            'weight_mean': param.data.mean().item(),
+            'weight_std': param.data.std().item(),
+            'weight_max': param.data.max().item(),
+            'weight_min': param.data.min().item(),
+            'grad_mean': param.grad.mean().item() if param.grad is not None else None,
+            'grad_std': param.grad.std().item() if param.grad is not None else None,
+            'grad_max': param.grad.max().item() if param.grad is not None else None,
+            'grad_min': param.grad.min().item() if param.grad is not None else None
+        }
+
+    return stats
