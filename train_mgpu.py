@@ -24,6 +24,7 @@ from models.optimizer import Adam, AdamW
 
 from model_utils.utils import check_nan_and_stats_in_model
 import math
+import os
 
 EPOCH_SCHEDULERS = ['ReduceLROnPlateau', 'StepLR', 'MultiplicativeLR',
                     'MultiStepLR', 'ExponentialLR', 'LambdaLR',]
