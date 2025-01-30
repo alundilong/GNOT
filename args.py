@@ -51,8 +51,9 @@ def get_args():
 
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
                         help='max learning rate (default: 0.001)')
-    parser.add_argument('--weight-decay',type=float,default=5e-6
-                        )
+    parser.add_argument('--weight-decay',type=float,default=5e-6)
+    parser.add_argument('--beta1',type=float,default=0.9)
+    parser.add_argument('--beta2',type=float,default=0.999)
     parser.add_argument('--grad-clip', type=str, default=1000.0
                         )
     parser.add_argument('--batch-size', type=int, default=4, metavar='bsz',
