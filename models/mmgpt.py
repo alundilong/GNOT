@@ -238,9 +238,9 @@ class MIOECrossAttentionBlock(nn.Module):
         x_moe2 = torch.stack([self.moe_mlp2[i](x) for i in range(self.n_experts)],dim=-1) # B, T1, C, m
         x_moe2 = (gate_score*x_moe2).sum(dim=-1,keepdim=False)
         x = x + self.ln5(x_moe2)
-        print(f"Allocated: {torch.cuda.memory_allocated() / 1e9:.2g} GB")
-        print(f"Reserved: {torch.cuda.memory_reserved() / 1e9:.2g} GB")
-        print(f"Max Allocated: {torch.cuda.max_memory_allocated() / 1e9:.2g} GB")
+        #print(f"Allocated: {torch.cuda.memory_allocated() / 1e9:.2g} GB")
+        #print(f"Reserved: {torch.cuda.memory_reserved() / 1e9:.2g} GB")
+        #print(f"Max Allocated: {torch.cuda.max_memory_allocated() / 1e9:.2g} GB")
         return x
 
     #### No layernorm
