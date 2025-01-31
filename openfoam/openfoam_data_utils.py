@@ -96,22 +96,22 @@ class openfoam_data_single_case_loader:
         Cz = mesh.Cz
         nCoordinate = len(Cx)
         # nf includes (x, time, U0)
-        a_nfield = 10 # x,y,z,time,U0,p_rgh,T,alpha,m
+        a_nfield = 9 # x,y,time,U0,p_rgh,T,alpha,m
         n_total = nCoordinate*nt
         a_data = torch.zeros((n_total,a_nfield),dtype=dtype)
         # input data has bs, nCoordinate,ny,nz, nt, nf
         a_data[:,0] = Cx.repeat(nt)
         a_data[:,1] = Cy.repeat(nt)
-        a_data[:,2] = Cz.repeat(nt)
+        #a_data[:,2] = Cz.repeat(nt)
         time = torch.linspace(0,duration,nt,dtype=dtype)
-        a_data[:,3] = time.repeat(nCoordinate)
-        a_data[:,4] = U0x.repeat(nt)
-        a_data[:,5] = U0y.repeat(nt)
+        a_data[:,2] = time.repeat(nCoordinate)
+        a_data[:,3] = U0x.repeat(nt)
+        a_data[:,4] = U0y.repeat(nt)
         #a_data[:,:,:,6] = U0z.reshape(1,nCoordinate,ny,nz,1).repeat(bz,1,1,1,nt)
-        a_data[:,6] = p_rgh0.repeat(nt)
-        a_data[:,7] = T0.repeat(nt)
-        a_data[:,8] = alpha0.repeat(nt)
-        a_data[:,9] = mask0.repeat(nt)
+        a_data[:,5] = p_rgh0.repeat(nt)
+        a_data[:,6] = T0.repeat(nt)
+        a_data[:,7] = alpha0.repeat(nt)
+        a_data[:,8] = mask0.repeat(nt)
 
         u_nfield = 5 # U,p_rgh,T,alpha
         u_data = torch.zeros((n_total,u_nfield),dtype=dtype)
@@ -122,8 +122,26 @@ class openfoam_data_single_case_loader:
         
         self.X = a_data
         self.Y = u_data
-        self.boundary_coordinates = a_data[n_cells:nCoordinate,:3]
         self.mesh = mesh
+        
+        remove_range = []
+        for key in bc_names:
+            start = mesh.boundary_start_face_vol_field[key]
+            end = mesh.boundary_end_face_vol_field[key]
+            remove_range.append((start,end))
+
+        indices_to_keep = np.ones(n_total, dtype=bool)
+        indices_to_keep_bc = np.ones(n_total, dtype=bool)
+
+        for start, end in remove_range:
+            for i in range(nt):
+                indices_to_keep[i*nCoordinate + start:i*nCoordinate + end] = False
+                indices_to_keep_bc[i*nCoordinate + start:i*nCoordinate + end] = False
+        for i in range(nt):
+            indices_to_keep_bc[i*nCoordinate:i*nCoordinate+n_cells] = False
+        self.boundary_coordinates = self.X[indices_to_keep_bc,:3] # x,y,t
+        self.X = self.X[indices_to_keep,:]
+        self.Y = self.Y[indices_to_keep,:]
 
 class openfoam_data_loader:
     def __init__(self, root_dir, dt, duration, rank, dtype=torch.float32, bc_names=[], max_cases=2):
@@ -134,7 +152,7 @@ class openfoam_data_loader:
 
         self.data_all = []
         for i, directory in enumerate(directories):
-            if i + 1 > max_cases:
+            if max_cases and i + 1 > max_cases:
                 break
             path = os.path.abspath(os.path.join(root_dir, directory))
             print(f'{i} {path}')
@@ -142,21 +160,32 @@ class openfoam_data_loader:
             single = []
             single.append(loader.X.numpy())
             single.append(loader.Y.numpy())
-            single.append(np.array([0.0]))
+            single.append(np.array([0.0]*6))
             single.append([loader.boundary_coordinates.numpy()])
             self.data_all.append(single)
 
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    bc_names=['defaultFaces']
+    bc_names=['front','back']
     path = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs/max_16_min_11_points_8/'
-    dt = 10
+    dt = 100
     duration = 1000
     #single_loader = openfoam_data_single_case_loader(path,dt,duration,rank=device,bc_names=bc_names)
 
     root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs/'
-    loader = openfoam_data_loader(root_dir,dt,duration,rank=device,bc_names=bc_names)
+    loader = openfoam_data_loader(root_dir,dt,duration,rank=device,bc_names=bc_names, max_cases=None)
     
-    pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle/'
-    pickle.dump(loader.data_all, open(os.path.join(pickle_dir, 'porousmelting_train.pkl'),'wb'))
+    pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_coarse/'
+    print(f'total sample: {len(loader.data_all)}')
+
+    # Check if the directory exists
+    dir_to_store = os.path.join(pickle_dir, 'porousmelting_train.pkl') 
+    if not os.path.exists(dir_to_store):
+        # Create the directory
+        os.makedirs(dir_to_store)
+        print(f"Directory '{dir_to_store}' created.")
+    else:
+        print(f"Directory '{dir_to_store}' already exists.")
+    
+    pickle.dump(loader.data_all, open(dir_to_store,'wb'))
 
