@@ -26,6 +26,7 @@ import math
 
 from model_utils.utils import load_checkpoint, save_checkpoint
 from datetime import datetime
+from tqdm import tqdm
 
 
 '''
@@ -72,7 +73,8 @@ def train(model, loss_func, metric_func,
     stop_counter = 0
     is_epoch_scheduler = any(s in str(lr_scheduler.__class__)for s in EPOCH_SCHEDULERS)
 
-    for epoch in range(start_epoch, end_epoch):
+    pbar = tqdm(range(start_epoch, end_epoch), dynamic_ncols=True, smoothing=0.1,leave=False)
+    for epoch in pbar:
         model.train()
         torch.cuda.empty_cache()
         for batch in train_loader:
@@ -95,7 +97,8 @@ def train(model, loss_func, metric_func,
             log += " | current lr: {:.3e}".format(lr)
 
             if it % print_freq==0:
-                print(log)
+                #print(log)
+                pbar.set_description(log)
 
             if writer is not None:
                 for j in range(len(_loss_mean)):
@@ -151,7 +154,8 @@ def train(model, loss_func, metric_func,
                     desc_ep += "| loss {}: {:.3e}".format(j, _loss_mean[j])
 
         desc_ep += log
-        print(desc_ep)
+        #print(desc_ep)
+        pbar.set_description(desc_ep)
 
         result = dict(
             best_val_epoch=best_val_epoch,
