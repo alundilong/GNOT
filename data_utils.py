@@ -24,9 +24,7 @@ from torch.utils.data import Dataset
 from torch.nn.modules.loss import _WeightedLoss
 from torch.nn.utils.rnn import pad_sequence
 
-
-
-from utils import TorchQuantileTransformer, UnitTransformer, PointWiseUnitTransformer, MultipleTensors
+from utils import TorchQuantileTransformer, UnitTransformer, MinMaxTransformer, PointWiseUnitTransformer, MultipleTensors
 from models.cgpt import CGPTNO
 from models.mmgpt import GNOT
 
@@ -282,7 +280,7 @@ class MIODataset(DGLDataset):
         if not os.path.exists(self.cached_path):
             data_all = []
             if not openfoam:
-                data_all = pickle.load(open(self.data_path, "rb"))
+                data_all = pickle.load(open(self.data_path, "rb"))[:4]
             else:
                 device = torch.device('cpu')
                 bc_names=['defaultFaces']

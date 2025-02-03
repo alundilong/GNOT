@@ -430,9 +430,36 @@ class UnitTransformer():
             else:
                 return (X - self.mean[:,component])/self.std[:,component]
 
+'''
+    Simple MinMax layer
+'''
+class MinMaxTransformer():
+    def __init__(self, X):
+        self.min = X.min(dim=0, keepdim=True)[0]
+        self.max = X.max(dim=0, keepdim=True)[0]
+        # Avoid division by zero
+        self.range = self.max - self.min
+        self.range[self.range == 0] = 1
 
+    def to(self, device):
+        self.min = self.min.to(device)
+        self.max = self.max.to(device)
+        self.range = self.range.to(device)
+        return self
 
-
+    def transform(self, X, inverse=False, component='all'):
+        if inverse:
+            if component == 'all' or 'all-reduce':
+                return X * self.range + self.min
+            else:
+                orig_shape = X.shape
+                return (X.view(-1, self.range.shape[1]) * self.range[:, component] + self.min[:, component]).view(orig_shape)
+        else:
+            if component == 'all' or 'all-reduce':
+                return (X - self.min) / self.range
+            else:
+                orig_shape = X.shape
+                return ((X.view(-1, self.range.shape[1]) - self.min[:, component]) / self.range[:, component]).view(orig_shape)
 
 '''
     Simple pointwise normalization layer, all data must contain the same length, used only for FNO datasets
