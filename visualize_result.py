@@ -28,9 +28,9 @@ if __name__ == "__main__":
     model_dict = result['model']
 
     vis_component = 0 if args.component == 'all' else int(args.component)
+    vis_component = 4
 
     device = torch.device('cpu')
-
 
     kwargs = {'pin_memory': False} if args.gpu else {}
     get_seed(args.seed, printout=False)
@@ -41,8 +41,8 @@ if __name__ == "__main__":
 
     test_loader = MIODataLoader(test_dataset, sampler=test_sampler, batch_size=1, drop_last=False)
 
-    loss_func = get_loss_func(args.loss_name, args, regularizer=True,  normalizer=args.normalizer)
-    metric_func = get_loss_func(args.loss_name, args , regularizer=False, normalizer=args.normalizer)
+    loss_func = get_loss_func(args.loss_name, args, regularizer=True,  normalizer=args.y_normalizer)
+    metric_func = get_loss_func(args.loss_name, args , regularizer=False, normalizer=args.y_normalizer)
 
     model = get_model(args,)
 
@@ -56,20 +56,26 @@ if __name__ == "__main__":
         # u_p = u_p.unsqueeze(0)      ### test if necessary
         out = model(g, u_p, g_u)
 
+        if args.x_normalizer is not None:
+            g.ndata['x'] = args.x_normalizer.transform(g.ndata['x'],inverse=True)
+        if args.y_normalizer is not None:
+            g.ndata['y'] = args.y_normalizer.transform(g.ndata['y'],inverse=True)
+            out = args.y_normalizer.transform(out,inverse=True)
+
         x, y = g.ndata['x'][:,0].cpu().numpy(), g.ndata['x'][:,1].cpu().numpy()
         pred = out[:,vis_component].squeeze().cpu().numpy()
-        target =g.ndata['y'][:,vis_component].squeeze().cpu().numpy()
+        target = g.ndata['y'][:,vis_component].squeeze().cpu().numpy()
         err = pred - target
         print(pred)
         print(target)
         print(err)
         print(np.linalg.norm(err)/np.linalg.norm(target))
-        vis_component = 4
-        print(f'....................> {vis_component}')
 
         #### choose one to visualize
         cm = plt.get_cmap('rainbow')
 
+        print(x.min(),x.max())
+        print(y.min(),y.max())
         plot_heatmap(x, y, pred,cmap=cm,show=True,title='pred')
         plot_heatmap(x, y, target,cmap=cm,show=True,title='target')
 
@@ -87,3 +93,4 @@ if __name__ == "__main__":
         plt.colorbar()
         plt.title('target')
         plt.show()
+        print(f'....................> {vis_component}')
