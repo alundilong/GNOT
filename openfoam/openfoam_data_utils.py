@@ -172,20 +172,22 @@ if __name__ == "__main__":
     duration = 1000
     #single_loader = openfoam_data_single_case_loader(path,dt,duration,rank=device,bc_names=bc_names)
 
-    root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs/'
-    loader = openfoam_data_loader(root_dir,dt,duration,rank=device,bc_names=bc_names, max_cases=None)
-    
-    pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_coarse/'
-    print(f'total sample: {len(loader.data_all)}')
+    root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_time10_res50/'
+
+    pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/'
 
     # Check if the directory exists
-    dir_to_store = os.path.join(pickle_dir, 'porousmelting_train.pkl') 
-    if not os.path.exists(dir_to_store):
+    if not os.path.exists(pickle_dir):
         # Create the directory
-        os.makedirs(dir_to_store)
-        print(f"Directory '{dir_to_store}' created.")
+        os.makedirs(pickle_dir)
+        print(f"Directory '{pickle_dir}' created.")
     else:
-        print(f"Directory '{dir_to_store}' already exists.")
+        print(f"Directory '{pickle_dir}' already exists.")
+    loader = openfoam_data_loader(root_dir,dt,duration,rank=device,bc_names=bc_names, max_cases=None)
     
+    print(f'total sample: {len(loader.data_all)}')
+
+    
+    dir_to_store = os.path.join(pickle_dir, 'porousmelting_train.pkl') 
     pickle.dump(loader.data_all, open(dir_to_store,'wb'))
 
