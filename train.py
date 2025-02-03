@@ -260,14 +260,15 @@ if __name__ == "__main__":
     test_loader = MIODataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False)
 
     args.space_dim = int(re.search(r'\d', args.dataset).group())
-    args.normalizer =  train_dataset.y_normalizer.to(device) if train_dataset.y_normalizer is not None else None
+    args.y_normalizer =  train_dataset.y_normalizer.to(device) if train_dataset.y_normalizer is not None else None
+    args.x_normalizer =  train_dataset.x_normalizer.to(device) if train_dataset.x_normalizer is not None else None
 
     #### set random seeds
     get_seed(args.seed)
     torch.cuda.empty_cache()
 
-    loss_func = get_loss_func(name=args.loss_name,args= args, regularizer=True,normalizer=args.normalizer)
-    metric_func = get_loss_func(name='rel2', args=args, regularizer=False, normalizer=args.normalizer)
+    loss_func = get_loss_func(name=args.loss_name,args= args, regularizer=True,normalizer=args.y_normalizer)
+    metric_func = get_loss_func(name='rel2', args=args, regularizer=False, normalizer=args.y_normalizer)
 
     model = get_model(args)
     if args.resume:
