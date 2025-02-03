@@ -406,14 +406,13 @@ class MIODataset(DGLDataset):
             y_feats_all = torch.cat([g.ndata['y'] for g in self.graphs],dim=0)
             if self.normalize_y == 'unit':
                 self.y_normalizer = UnitTransformer(y_feats_all)
-                print('Target features are normalized using unit transformer')
                 print(self.y_normalizer.mean, self.y_normalizer.std)
-
+                print('Target features are normalized using unit transformer')
 
             elif self.normalize_y == 'minmax':
                 self.y_normalizer = MinMaxTransformer(y_feats_all)
-                print('Target features are normalized using unit transformer')
                 print(self.y_normalizer.max, self.y_normalizer.min)
+                print('Target features are normalized using minmax transformer')
 
             elif self.normalize_y == 'quantile':
                 self.y_normalizer = QuantileTransformer(output_distribution='normal')
@@ -426,7 +425,7 @@ class MIODataset(DGLDataset):
             g.ndata['y'] = self.y_normalizer.transform(g.ndata["y"], inverse=False)  # a torch quantile transformer
 
         # print('Target features are normalized using quantile transformer')
-        print('Target features are normalized using unit transformer')
+        #print('Target features are normalized using unit transformer')
 
 
     def __normalize_x(self):
@@ -435,10 +434,16 @@ class MIODataset(DGLDataset):
             if self.normalize_x == 'unit':
                 self.x_normalizer = UnitTransformer(x_feats_all)
                 self.up_normalizer = UnitTransformer(self.u_p)
+                print(self.x_normalizer.mean, self.x_normalizer.std)
+                print(self.up_normalizer.mean, self.up_normalizer.std)
+                print('Input features are normalized using unit transformer')
 
             elif self.normalize_x == 'minmax':
                 self.x_normalizer = MinMaxTransformer(x_feats_all)
                 self.up_normalizer = MinMaxTransformer(self.u_p)
+                print(self.x_normalizer.max, self.x_normalizer.min)
+                print(self.up_normalizer.max, self.up_normalizer.min)
+                print('Input features are normalized using minmax transformer')
 
             else:
                 raise NotImplementedError
@@ -448,8 +453,6 @@ class MIODataset(DGLDataset):
             g.ndata['x'] = self.x_normalizer.transform(g.ndata['x'], inverse=False)
         self.u_p = self.up_normalizer.transform(self.u_p, inverse=False)
 
-
-        print('Input features are normalized using unit transformer')
 
 
     def __update_dataset_config(self):
