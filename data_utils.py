@@ -51,8 +51,8 @@ def get_dataset(args):
             train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
             test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
         else:
-            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_coarse/porousmelting_train.pkl"
-            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_coarse/porousmelting_train.pkl"
+            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/porousmelting_train.pkl"
+            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/porousmelting_train.pkl"
 
     else:
         raise NotImplementedError
