@@ -17,8 +17,9 @@ from utils import plot_heatmap
 
 if __name__ == "__main__":
 
-    model_path = '[Your model path]'
+    model_path = './data/checkpoints/99_2025-02-03_10:04:40_porousmelting3d_all_MIOEGPTrel2_0203_10_03_31.pt.ckpt'
     result = torch.load(model_path,map_location='cpu')
+    print(result.keys())
 
 
     args = result['args']
@@ -44,7 +45,6 @@ if __name__ == "__main__":
 
     model = get_model(args,)
 
-
     model.load_state_dict(model_dict)
 
     model.eval()
@@ -63,31 +63,26 @@ if __name__ == "__main__":
         print(target)
         print(err)
         print(np.linalg.norm(err)/np.linalg.norm(target))
-
-
-
-
+        vis_component = 4
+        print(f'....................> {vis_component}')
 
         #### choose one to visualize
-        cm = plt.cm.get_cmap('rainbow')
+        cm = plt.get_cmap('rainbow')
 
-        plot_heatmap(x, y, pred,cmap=cm,show=True)
-        plot_heatmap(x, y, target,cmap=cm,show=True)
-
+        plot_heatmap(x, y, pred,cmap=cm,show=True,title='pred')
+        plot_heatmap(x, y, target,cmap=cm,show=True,title='target')
 
         plt.figure()
         plt.scatter(x, y, c=pred, cmap=cm,s=2)
         plt.colorbar()
+        plt.title('pred')
         plt.show()
         plt.figure()
         plt.scatter(x, y, c=err, cmap=cm,s=2)
         plt.colorbar()
+        plt.title('err')
         plt.show()
         plt.scatter(x, y, c=target, s=2,cmap=cm)
         plt.colorbar()
+        plt.title('target')
         plt.show()
-
-
-
-
-

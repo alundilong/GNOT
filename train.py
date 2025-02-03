@@ -45,6 +45,7 @@ def train(model, loss_func, metric_func,
               train_loader, valid_loader,
               optimizer, lr_scheduler,
               save_every,
+              args,
               epochs=10,
               writer=None,
               device="cuda",
@@ -178,6 +179,7 @@ def train(model, loss_func, metric_func,
                     'epoch': epoch,
                     'optimizer': optimizer.state_dict(),
                     'scheduler': scheduler.state_dict(),
+                    'args': args
                 }
                 ckpt_dir = train_save_dir
                 if not os.path.exists(ckpt_dir):
@@ -328,6 +330,7 @@ if __name__ == "__main__":
                        train_loader, test_loader,
                        optimizer, scheduler,
                        save_every,
+                       args,
                        epochs=epochs,
                        grad_clip=args.grad_clip,
                        patience=None,
