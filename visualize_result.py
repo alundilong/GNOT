@@ -13,14 +13,15 @@ from args import get_args
 from data_utils import get_dataset, get_model, get_loss_func, MIODataLoader
 from train import validate_epoch
 from utils import plot_heatmap
-
+import os
 
 if __name__ == "__main__":
 
-    model_path = './data/checkpoints/99_2025-02-03_10:04:40_porousmelting3d_all_MIOEGPTrel2_0203_10_03_31.pt.ckpt'
+    ckpt_dir_or_file = './data/checkpoints/'
+    with open(os.path.join(ckpt_dir_or_file, 'latest_checkpoint.txt')) as f:
+        ckpt_path = os.path.join(ckpt_dir_or_file, f.readline()[:-1])
+    model_path = ckpt_path
     result = torch.load(model_path,map_location='cpu')
-    print(result.keys())
-
 
     args = result['args']
 
