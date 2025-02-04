@@ -33,12 +33,13 @@ class porousFieldLoaderOF:
         sorted_filtered = sorted(filtered, key=float)
         n_times = len(sorted_filtered)
         n_fields = 5 # Ux, Uy, p_rgh, T, alpha (Uz is not included as it is a 2D case)
-        data = np.zeros((total_vol_array_size,n_times,n_fields))
+        data = np.zeros((n_times,total_vol_array_size,n_fields))
         data_dict = []
 
         self.n_times = n_times
         for index, time in enumerate(sorted_filtered):
-            #print(time)
+            print('='*15+"Extracing"+'='*15)
+            print(f'index = {index} time = {time}')
             Ux = np.zeros(total_vol_array_size)
             Uy = np.zeros(total_vol_array_size)
             Uz = np.zeros(total_vol_array_size)
@@ -57,8 +58,8 @@ class porousFieldLoaderOF:
                     neighbors=mesh.neighbors,\
                     bc_names=bc_names\
                     )
-            data[:,index,0] = Ux
-            data[:,index,1] = Uy
+            data[index,:,0] = Ux
+            data[index,:,1] = Uy
             #data[:,index,2] = Uz
 
             p_rgh = np.zeros(total_vol_array_size)
@@ -75,7 +76,7 @@ class porousFieldLoaderOF:
                     neighbors=mesh.neighbors,\
                     bc_names=bc_names\
                     )
-            data[:,index,2] = p_rgh
+            data[index,:,2] = p_rgh
 
             readScalarVolType(T, \
                     n_cells, \
@@ -87,7 +88,7 @@ class porousFieldLoaderOF:
                     neighbors=mesh.neighbors,\
                     bc_names=bc_names\
                     )
-            data[:,index,3] = T
+            data[index,:,3] = T
 
             readScalarVolType(alpha, \
                     n_cells, \
@@ -99,7 +100,7 @@ class porousFieldLoaderOF:
                     neighbors=mesh.neighbors,\
                     bc_names=bc_names\
                     )
-            data[:,index,4] = alpha
+            data[index,:,4] = alpha
         
         # Print tensor in scientific notation
         #np.set_printoptions(formatter={'float': '{:0.30g}'.format})

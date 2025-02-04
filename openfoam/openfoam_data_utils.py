@@ -187,7 +187,6 @@ if __name__ == "__main__":
     
     print(f'total sample: {len(loader.data_all)}')
 
-    
     dir_to_store = os.path.join(pickle_dir, 'porousmelting_train.pkl') 
     pickle.dump(loader.data_all, open(dir_to_store,'wb'))
 
