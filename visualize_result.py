@@ -12,7 +12,7 @@ from utils import get_seed, get_num_params
 from args import get_args
 from data_utils import get_dataset, get_model, get_loss_func, MIODataLoader
 from train import validate_epoch
-from utils import plot_heatmap
+from utils import plot_heatmap, plot_time_sequence_heatmaps
 import os
 
 if __name__ == "__main__":
@@ -28,6 +28,8 @@ if __name__ == "__main__":
     model_dict = result['model']
 
     vis_component = 0 if args.component == 'all' else int(args.component)
+    frame = 10
+    npoints = 2700
     vis_component = 4
 
     device = torch.device('cpu')
@@ -66,9 +68,11 @@ if __name__ == "__main__":
         pred = out[:,vis_component].squeeze().cpu().numpy()
         target = g.ndata['y'][:,vis_component].squeeze().cpu().numpy()
         err = pred - target
-        print(pred)
-        print(target)
-        print(err)
+        print(f'size of xcoord: {len(x)}')
+        print(f'size of ycoord: {len(y)}')
+        print(f'size of pred: {len(pred)}')
+        print(f'size of target: {len(target)}')
+        print(f'size of err: {len(err)}')
         print(np.linalg.norm(err)/np.linalg.norm(target))
 
         #### choose one to visualize
@@ -76,8 +80,40 @@ if __name__ == "__main__":
 
         print(x.min(),x.max())
         print(y.min(),y.max())
-        plot_heatmap(x, y, pred,cmap=cm,show=True,title='pred')
-        plot_heatmap(x, y, target,cmap=cm,show=True,title='target')
+    
+        myIndex = 0
+        mypred = out[:,myIndex].squeeze().cpu().numpy()
+        mytarget = g.ndata['y'][:,myIndex].squeeze().cpu().numpy()
+        plot_time_sequence_heatmaps(x,y,mypred,mytarget,11,2700,title="Ux",path="Ux.png")
+
+        myIndex = 1
+        mypred = out[:,myIndex].squeeze().cpu().numpy()
+        mytarget = g.ndata['y'][:,myIndex].squeeze().cpu().numpy()
+        plot_time_sequence_heatmaps(x,y,mypred,mytarget,11,2700,title="Uy",path="Uy.png")
+
+        myIndex = 2
+        mypred = out[:,myIndex].squeeze().cpu().numpy()
+        mytarget = g.ndata['y'][:,myIndex].squeeze().cpu().numpy()
+        plot_time_sequence_heatmaps(x,y,mypred,mytarget,11,2700,title="prgh",path="prgh.png")
+
+        myIndex = 3
+        mypred = out[:,myIndex].squeeze().cpu().numpy()
+        mytarget = g.ndata['y'][:,myIndex].squeeze().cpu().numpy()
+        plot_time_sequence_heatmaps(x,y,mypred,mytarget,11,2700,title="T",path="T.png")
+
+        myIndex = 4
+        mypred = out[:,myIndex].squeeze().cpu().numpy()
+        mytarget = g.ndata['y'][:,myIndex].squeeze().cpu().numpy()
+        plot_time_sequence_heatmaps(x,y,mypred,mytarget,11,2700,title="alpha",path="alpha.png")
+
+        x = x[frame*npoints:(frame+1)*npoints]
+        y = y[frame*npoints:(frame+1)*npoints]
+        pred = pred[frame*npoints:(frame+1)*npoints]
+        target = target[frame*npoints:(frame+1)*npoints]
+        err = err[frame*npoints:(frame+1)*npoints]
+
+        plot_heatmap(x, y, pred,path='./pred.png',cmap=cm,show=True,title='pred')
+        plot_heatmap(x, y, target,path='./target.png',cmap=cm,show=True,title='target')
 
         plt.figure()
         plt.scatter(x, y, c=pred, cmap=cm,s=2)

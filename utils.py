@@ -130,6 +130,50 @@ def plot_heatmap(
         plt.show()
     plt.close()
 
+def plot_time_sequence_heatmaps(x, y, preds, targets, nframe, npoints, 
+                                vmin=None, vmax=None, cmap=None,
+                                title="", xlabel="x", ylabel="y", path=None):
+    '''
+    Plot a series of heatmaps for prediction and target data side by side.
+    `x` and `y` are the coordinates.
+    `preds` and `targets` are lists of z-values for each timestep.
+    `nrows` should match the length of preds and targets divided by 2.
+    '''
+    # Setup figure and axes grid
+    nrows = nframe
+    fig, axes = plt.subplots(nrows=nrows, ncols=2, figsize=(10, nrows * 5))
+    plt.subplots_adjust(hspace=0.4, wspace=0.4)
+
+    for idx in range(nframe):
+    
+        # Create meshgrid for plotting
+        x_cur = x[idx*npoints:(idx+1)*npoints]
+        y_cur = y[idx*npoints:(idx+1)*npoints]
+        xx, yy = np.meshgrid(np.linspace(np.min(x_cur), np.max(x_cur), len(x_cur)),
+                         np.linspace(np.min(y_cur), np.max(y_cur), len(y_cur)))
+        ax_pred = axes[idx, 0] if nrows > 1 else axes[0]
+        ax_target = axes[idx, 1] if nrows > 1 else axes[1]
+        preds_cur = preds[idx*npoints:(idx+1)*npoints]
+        targets_cur = targets[idx*npoints:(idx+1)*npoints]
+        # Interpolate prediction and target data
+        for ax, z in zip([ax_pred, ax_target], [preds_cur, targets_cur]):
+            vals = interpolate.griddata((x_cur, y_cur), z, (xx, yy), method='cubic')
+            vals_0 = interpolate.griddata((x_cur, y_cur), z, (xx, yy), method='nearest')
+            vals[np.isnan(vals)] = vals_0[np.isnan(vals)]
+
+            im = ax.imshow(vals, extent=[np.min(x_cur), np.max(x_cur), np.min(y_cur), np.max(y_cur)],
+                           aspect="auto", interpolation="bicubic", cmap=cmap,
+                           vmin=vmin, vmax=vmax, origin='lower')
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+            ax.set_title(f"{title} {'Prediction' if ax == ax_pred else 'Target'} at T={idx}")
+            fig.colorbar(im, ax=ax)
+
+    if path:
+        plt.savefig(path)
+    plt.show()
+    plt.close(fig)
+
 import contextlib
 
 class Interp1d(torch.autograd.Function):
