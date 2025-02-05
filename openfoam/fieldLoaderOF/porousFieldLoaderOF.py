@@ -78,6 +78,9 @@ class porousFieldLoaderOF:
                     )
             data[index,:,2] = p_rgh
 
+            temp_bc_names = bc_names.copy()
+            temp_bc_names.append('floor')
+            temp_bc_names.append('ceiling')
             readScalarVolType(T, \
                     n_cells, \
                     bounfile, \
@@ -86,7 +89,7 @@ class porousFieldLoaderOF:
                     "T",\
                     owners=mesh.owners,\
                     neighbors=mesh.neighbors,\
-                    bc_names=bc_names\
+                    bc_names=temp_bc_names\
                     )
             data[index,:,3] = T
 

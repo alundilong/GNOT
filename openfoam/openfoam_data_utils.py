@@ -56,6 +56,9 @@ class openfoam_data_single_case_loader:
                 neighbors=mesh.neighbors,\
                 bc_names=bc_names\
                 )
+        temp_bc_names = bc_names.copy()
+        temp_bc_names.append('floor')
+        temp_bc_names.append('ceiling')
         readScalarVolType(T, \
                 n_cells, \
                 bounfile, \
@@ -64,7 +67,7 @@ class openfoam_data_single_case_loader:
                 "T",\
                 owners=mesh.owners,\
                 neighbors=mesh.neighbors,\
-                bc_names=bc_names\
+                bc_names=temp_bc_names\
                 )
         readScalarVolType(alpha, \
                 n_cells, \
@@ -183,7 +186,7 @@ if __name__ == "__main__":
         print(f"Directory '{pickle_dir}' created.")
     else:
         print(f"Directory '{pickle_dir}' already exists.")
-    loader = openfoam_data_loader(root_dir,dt,duration,rank=device,bc_names=bc_names, max_cases=None)
+    loader = openfoam_data_loader(root_dir,dt,duration,rank=device,bc_names=bc_names, max_cases=4)
     
     print(f'total sample: {len(loader.data_all)}')
 
