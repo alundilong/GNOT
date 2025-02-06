@@ -283,8 +283,8 @@ class MIODataset(DGLDataset):
                 data_all = pickle.load(open(self.data_path, "rb"))[:4]
             else:
                 device = torch.device('cpu')
-                bc_names=['defaultFaces']
-                dt = 10
+                bc_names=['front','back']
+                dt = 100
                 duration = 1000
                 loader = openfoam_data_loader(self.data_path,dt,duration,rank=device,bc_names=bc_names)
                 data_all = loader.data_all
@@ -295,7 +295,13 @@ class MIODataset(DGLDataset):
             with open('x.dat', 'w') as file:
                 # Iterate through each coordinate and write it to the file
                 for coord in coordinates:
-                    file.write(f"{coord[0]} {coord[1]}\n")
+                    file.write(f"{coord[0]} {coord[1]} {coord[3]} {coord[4]} {coord[5]} {coord[6]} {coord[7]} {coord[8]}\n")
+
+            gts = data_all[0][1]
+            with open('gt.dat', 'w') as file:
+                # Iterate through each coordinate and write it to the file
+                for value in gts:
+                    file.write(f"{value[0]} {value[1]} {value[2]} {value[3]} {value[4]}\n")
 
             # Your list of 2D coordinates
             coordinates = data_all[0][3][0]
