@@ -295,7 +295,7 @@ class MIODataset(DGLDataset):
             with open('x.dat', 'w') as file:
                 # Iterate through each coordinate and write it to the file
                 for coord in coordinates:
-                    file.write(f"{coord[0]} {coord[1]} {coord[3]} {coord[4]} {coord[5]} {coord[6]} {coord[7]} {coord[8]}\n")
+                    file.write(f"{coord[0]} {coord[1]} {coord[2]} {coord[3]} {coord[4]} {coord[5]} {coord[6]} {coord[7]} {coord[8]}\n")
 
             gts = data_all[0][1]
             with open('gt.dat', 'w') as file:
@@ -456,7 +456,9 @@ class MIODataset(DGLDataset):
 
 
         for g in self.graphs:
+            #print(f"before:{g.ndata['x'][:,2].shape} {g.ndata['x'][:,2]} {min(g.ndata['x'][:,2])} {max(g.ndata['x'][:,2])}")
             g.ndata['x'] = self.x_normalizer.transform(g.ndata['x'], inverse=False)
+            #print(f"after: {g.ndata['x'][:,2]} {min(g.ndata['x'][:,2])} {max(g.ndata['x'][:,2])}")
         self.u_p = self.up_normalizer.transform(self.u_p, inverse=False)
 
 
