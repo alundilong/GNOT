@@ -107,7 +107,7 @@ class openfoam_data_single_case_loader:
         a_data[:,1] = Cy.repeat(nt)
         #a_data[:,2] = Cz.repeat(nt)
         time = torch.linspace(0,duration,nt,dtype=dtype)
-        a_data[:,2] = time.repeat(nCoordinate)
+        a_data[:,2] = time.repeat_interleave(nCoordinate)
         a_data[:,3] = U0x.repeat(nt)
         a_data[:,4] = U0y.repeat(nt)
         #a_data[:,:,:,6] = U0z.reshape(1,nCoordinate,ny,nz,1).repeat(bz,1,1,1,nt)
@@ -171,13 +171,18 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     bc_names=['front','back']
     path = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs/max_16_min_11_points_8/'
-    dt = 10
+
+    case_tag = "long"
+    dt = 200
     duration = 2000
+    root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_time10_res50/'
+    pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/'
+    if case_tag == "long":
+        dt = 10
+        root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_long_time10_res50/'
+        pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_long_time10_res50/'
+
     #single_loader = openfoam_data_single_case_loader(path,dt,duration,rank=device,bc_names=bc_names)
-
-    root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_long_time10_res50/'
-
-    pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_long_time10_res50/'
 
     # Check if the directory exists
     if not os.path.exists(pickle_dir):
