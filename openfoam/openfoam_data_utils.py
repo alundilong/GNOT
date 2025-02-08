@@ -74,7 +74,7 @@ class openfoam_data_single_case_loader:
                 bounfile, \
                 time, \
                 sol, \
-                "lf",\
+                "alpha",\
                 owners=mesh.owners,\
                 neighbors=mesh.neighbors,\
                 bc_names=bc_names\
@@ -171,13 +171,13 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     bc_names=['front','back']
     path = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs/max_16_min_11_points_8/'
-    dt = 100
-    duration = 1000
+    dt = 10
+    duration = 2000
     #single_loader = openfoam_data_single_case_loader(path,dt,duration,rank=device,bc_names=bc_names)
 
-    root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_time10_res50/'
+    root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_long_time10_res50/'
 
-    pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/'
+    pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_long_time10_res50/'
 
     # Check if the directory exists
     if not os.path.exists(pickle_dir):
@@ -186,7 +186,7 @@ if __name__ == "__main__":
         print(f"Directory '{pickle_dir}' created.")
     else:
         print(f"Directory '{pickle_dir}' already exists.")
-    loader = openfoam_data_loader(root_dir,dt,duration,rank=device,bc_names=bc_names, max_cases=4)
+    loader = openfoam_data_loader(root_dir,dt,duration,rank=device,bc_names=bc_names, max_cases=None)
     
     print(f'total sample: {len(loader.data_all)}')
 

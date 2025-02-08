@@ -98,7 +98,7 @@ class porousFieldLoaderOF:
                     bounfile, \
                     time, \
                     sol, \
-                    "lf",\
+                    "alpha",\
                     owners=mesh.owners,\
                     neighbors=mesh.neighbors,\
                     bc_names=bc_names\
