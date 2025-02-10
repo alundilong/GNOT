@@ -296,7 +296,7 @@ if __name__ == "__main__":
         log_path = None
 
 
-    print(model)
+    # print(model)
     # print(config)
 
     epochs = args.epochs
