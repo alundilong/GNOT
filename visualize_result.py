@@ -29,8 +29,8 @@ if __name__ == "__main__":
 
     vis_component = 0 if args.component == 'all' else int(args.component)
     frame = 10
-    npoints = 2700
-    vis_component = 4
+    npoints = 2500+200
+    vis_component = 3
 
     device = torch.device('cpu')
 
@@ -64,69 +64,120 @@ if __name__ == "__main__":
             g.ndata['y'] = args.y_normalizer.transform(g.ndata['y'],inverse=True)
             out = args.y_normalizer.transform(out,inverse=True)
 
-        x, y = g.ndata['x'][:,0].cpu().numpy(), g.ndata['x'][:,1].cpu().numpy()
-        pred = out[:,vis_component].squeeze().cpu().numpy()
-        target = g.ndata['y'][:,vis_component].squeeze().cpu().numpy()
-        err = pred - target
-        print(f'size of xcoord: {len(x)}')
-        print(f'size of ycoord: {len(y)}')
-        print(f'size of pred: {len(pred)}')
-        print(f'size of target: {len(target)}')
-        print(f'size of err: {len(err)}')
-        print(np.linalg.norm(err)/np.linalg.norm(target))
+        x0, y0 = g.ndata['x'][:,0].cpu().numpy(), g.ndata['x'][:,1].cpu().numpy()
+        pred0 = out[:,vis_component].squeeze().cpu().numpy()
+        target0 = g.ndata['y'][:,vis_component].squeeze().cpu().numpy()
+        err0 = pred0 - target0
+        print(f'size of xcoord: {len(x0)}')
+        print(f'size of ycoord: {len(y0)}')
+        print(f'size of pred: {len(pred0)}')
+        print(f'size of target: {len(target0)}')
+        print(f'size of err: {len(err0)}')
+        print(np.linalg.norm(err0)/np.linalg.norm(target0))
 
         #### choose one to visualize
         cm = plt.get_cmap('rainbow')
 
-        print(x.min(),x.max())
-        print(y.min(),y.max())
+        first_frame = 0
+        second_frame = 5
+        third_frame = 10
+        frame = first_frame
+        x = x0[frame*npoints:(frame+1)*npoints]
+        y = y0[frame*npoints:(frame+1)*npoints]
+        pred = pred0[frame*npoints:(frame+1)*npoints]
+        target = target0[frame*npoints:(frame+1)*npoints]
+        err = err0[frame*npoints:(frame+1)*npoints]
+
+        fig, axes = plt.subplots(nrows=3, ncols=3, figsize=(10, 12))
+
+        sc = axes[0,0].scatter(x, y, c=pred, cmap=cm,s=2)
+        ax = axes[0,0]
+        fig.colorbar(sc, ax=ax)
+        axes[0,0].set_title('pred')
+
+        sc = axes[1,0].scatter(x, y, c=target, s=2,cmap=cm)
+        ax = axes[1,0]
+        fig.colorbar(sc, ax=ax)
+        axes[1,0].set_title('target')
+
+        sc = axes[2,0].scatter(x, y, c=err, cmap=cm,s=2)
+        ax = axes[2,0]
+        fig.colorbar(sc, ax=ax)
+        axes[2,0].set_title('err')
+
+        frame = second_frame
+        x = x0[frame*npoints:(frame+1)*npoints]
+        y = y0[frame*npoints:(frame+1)*npoints]
+        pred = pred0[frame*npoints:(frame+1)*npoints]
+        target = target0[frame*npoints:(frame+1)*npoints]
+        err = err0[frame*npoints:(frame+1)*npoints]
+
+        sc = axes[0,1].scatter(x, y, c=pred, cmap=cm,s=2)
+        ax = axes[0,1]
+        fig.colorbar(sc, ax=ax)
+        axes[0,1].set_title('pred')
+
+        sc = axes[1,1].scatter(x, y, c=target, s=2,cmap=cm)
+        ax = axes[1,1]
+        fig.colorbar(sc, ax=ax)
+        axes[1,1].set_title('target')
+
+        sc = axes[2,1].scatter(x, y, c=err, cmap=cm,s=2)
+        ax = axes[2,1]
+        fig.colorbar(sc, ax=ax)
+        axes[2,1].set_title('err')
+
+        frame = third_frame
+        x = x0[frame*npoints:(frame+1)*npoints]
+        y = y0[frame*npoints:(frame+1)*npoints]
+        pred = pred0[frame*npoints:(frame+1)*npoints]
+        target = target0[frame*npoints:(frame+1)*npoints]
+        err = err0[frame*npoints:(frame+1)*npoints]
+
+        sc = axes[0,2].scatter(x, y, c=pred, cmap=cm,s=2)
+        ax = axes[0,2]
+        fig.colorbar(sc, ax=ax)
+        axes[0,2].set_title('pred')
+
+        sc = axes[1,2].scatter(x, y, c=target, s=2,cmap=cm)
+        ax = axes[1,2]
+        fig.colorbar(sc, ax=ax)
+        axes[1,2].set_title('target')
+
+        sc = axes[2,2].scatter(x, y, c=err, cmap=cm,s=2)
+        ax = axes[2,2]
+        fig.colorbar(sc, ax=ax)
+        axes[2,2].set_title('err')
+
+        plt.show()
+        print(f'....................> {vis_component}')
     
+        #exit(1)
+
         myIndex = 0
         mypred = out[:,myIndex].squeeze().cpu().numpy()
         mytarget = g.ndata['y'][:,myIndex].squeeze().cpu().numpy()
-        plot_time_sequence_heatmaps(x,y,mypred,mytarget,11,2700,title="Ux",path="Ux.png")
+        plot_time_sequence_heatmaps(x0,y0,mypred,mytarget,11,2700,title="Ux",path="Ux.png")
 
         myIndex = 1
         mypred = out[:,myIndex].squeeze().cpu().numpy()
         mytarget = g.ndata['y'][:,myIndex].squeeze().cpu().numpy()
-        plot_time_sequence_heatmaps(x,y,mypred,mytarget,11,2700,title="Uy",path="Uy.png")
+        plot_time_sequence_heatmaps(x0,y0,mypred,mytarget,11,2700,title="Uy",path="Uy.png")
 
         myIndex = 2
         mypred = out[:,myIndex].squeeze().cpu().numpy()
         mytarget = g.ndata['y'][:,myIndex].squeeze().cpu().numpy()
-        plot_time_sequence_heatmaps(x,y,mypred,mytarget,11,2700,title="prgh",path="prgh.png")
+        plot_time_sequence_heatmaps(x0,y0,mypred,mytarget,11,2700,title="prgh",path="prgh.png")
 
         myIndex = 3
         mypred = out[:,myIndex].squeeze().cpu().numpy()
         mytarget = g.ndata['y'][:,myIndex].squeeze().cpu().numpy()
-        plot_time_sequence_heatmaps(x,y,mypred,mytarget,11,2700,title="T",path="T.png")
+        plot_time_sequence_heatmaps(x0,y0,mypred,mytarget,11,2700,title="T",path="T.png")
 
         myIndex = 4
         mypred = out[:,myIndex].squeeze().cpu().numpy()
         mytarget = g.ndata['y'][:,myIndex].squeeze().cpu().numpy()
-        plot_time_sequence_heatmaps(x,y,mypred,mytarget,11,2700,title="alpha",path="alpha.png")
-
-        x = x[frame*npoints:(frame+1)*npoints]
-        y = y[frame*npoints:(frame+1)*npoints]
-        pred = pred[frame*npoints:(frame+1)*npoints]
-        target = target[frame*npoints:(frame+1)*npoints]
-        err = err[frame*npoints:(frame+1)*npoints]
+        plot_time_sequence_heatmaps(x0,y0,mypred,mytarget,11,2700,title="alpha",path="alpha.png")
 
         plot_heatmap(x, y, pred,path='./pred.png',cmap=cm,show=True,title='pred')
         plot_heatmap(x, y, target,path='./target.png',cmap=cm,show=True,title='target')
-
-        plt.figure()
-        plt.scatter(x, y, c=pred, cmap=cm,s=2)
-        plt.colorbar()
-        plt.title('pred')
-        plt.show()
-        plt.figure()
-        plt.scatter(x, y, c=err, cmap=cm,s=2)
-        plt.colorbar()
-        plt.title('err')
-        plt.show()
-        plt.scatter(x, y, c=target, s=2,cmap=cm)
-        plt.colorbar()
-        plt.title('target')
-        plt.show()
-        print(f'....................> {vis_component}')
