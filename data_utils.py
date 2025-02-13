@@ -74,6 +74,14 @@ def get_dataset(args):
     return train_dataset, test_dataset
 
 
+def get_test_dataset(args,test_path):
+
+    test_dataset = MIODataset(test_path, openfoam=args.openfoam, name=args.dataset, train=False, test_num=args.test_num,
+            sort_data=args.sort_data,
+            normalize_y=args.use_normalizer,
+            normalize_x=args.normalize_x)
+
+    return test_dataset
 
 def get_model(args):
     # if args.dataset[:4] == 'ns2d':
@@ -280,7 +288,7 @@ class MIODataset(DGLDataset):
         if not os.path.exists(self.cached_path):
             data_all = []
             if not openfoam:
-                data_all = pickle.load(open(self.data_path, "rb"))[:4]
+                data_all = pickle.load(open(self.data_path, "rb")) #[::4]
             else:
                 device = torch.device('cpu')
                 bc_names=['front','back']
