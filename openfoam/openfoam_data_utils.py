@@ -172,15 +172,16 @@ if __name__ == "__main__":
     bc_names=['front','back']
     path = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs/max_16_min_11_points_8/'
 
-    case_tag = "long"
+    case_tag = "nolong"
+    res=100
     dt = 200
     duration = 2000
-    root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_time10_res50/'
-    pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/'
+    root_dir = f'/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_time10_res{res}/'
+    pickle_dir = f'/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res{res}/'
     if case_tag == "long":
         dt = 10
-        root_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_long_time10_res50/'
-        pickle_dir = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_long_time10_res50/'
+        root_dir = f'/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_long_time10_res{res}/'
+        pickle_dir = f'/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_long_time10_res{res}/'
 
     #single_loader = openfoam_data_single_case_loader(path,dt,duration,rank=device,bc_names=bc_names)
 
