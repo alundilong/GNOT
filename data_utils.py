@@ -49,8 +49,8 @@ def get_dataset(args):
             train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
             test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
         else:
-            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/porousmelting_train.pkl"
-            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/porousmelting_train.pkl"
+            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/train.pkl"
+            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/test_1.pkl"
 
     else:
         raise NotImplementedError
@@ -75,11 +75,39 @@ def get_dataset(args):
 
 
 def get_test_dataset(args,test_path):
+    if args.dataset == "ns2d":
+        train_path = './data/ns2d_1100_train.pkl'
+
+    elif args.dataset == "inductor2d":
+        train_path = "./data/inductor2d_1100_train.pkl"
+
+    elif args.dataset == "heat2d":
+        train_path = "./data/heat2d_1100_train.pkl"
+
+    elif args.dataset == "porousmelting3d":
+        if args.openfoam:
+            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
+        else:
+            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/porousmelting_train.pkl"
+
+    else:
+        raise NotImplementedError
+
+    args.train_num = int(args.train_num) if args.train_num not in ['all', 'none'] else args.train_num
+    args.test_num = int(args.test_num) if args.test_num not in ['all', 'none'] else args.test_num
+
+    train_dataset = MIODataset(train_path, openfoam=args.openfoam, name=args.dataset, train=True, train_num=args.train_num,
+            sort_data=args.sort_data,
+            normalize_y=args.use_normalizer,
+            normalize_x=args.normalize_x)
 
     test_dataset = MIODataset(test_path, openfoam=args.openfoam, name=args.dataset, train=False, test_num=args.test_num,
             sort_data=args.sort_data,
             normalize_y=args.use_normalizer,
-            normalize_x=args.normalize_x)
+            normalize_x=args.normalize_x,
+            y_normalizer=train_dataset.y_normalizer,
+            x_normalizer=train_dataset.x_normalizer,  
+            up_normalizer=train_dataset.up_normalizer)
 
     return test_dataset
 
