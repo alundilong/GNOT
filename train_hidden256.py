@@ -28,6 +28,8 @@ from model_utils.utils import load_checkpoint, save_checkpoint
 from datetime import datetime
 from tqdm import tqdm
 
+from accelerate import Accelerator
+
 
 '''
     A general code framework for training neural operator on irregular domains
@@ -41,8 +43,8 @@ EPOCH_SCHEDULERS = ['ReduceLROnPlateau', 'StepLR', 'MultiplicativeLR',
 
 
 
-def train(model, loss_func, metric_func,
-              train_loader, valid_loader,
+def train(accelerator, model, loss_func, metric_func,
+              train_loader, test_loader,
               optimizer, lr_scheduler,
               save_every,
               args,
@@ -78,9 +80,10 @@ def train(model, loss_func, metric_func,
     for epoch in pbar:
         model.train()
         torch.cuda.empty_cache()
-        for batch in train_loader:
+        #for batch in train_loader:
+        for _, batch in enumerate(train_loader):
 
-            loss = train_batch(model, loss_func, batch, optimizer, lr_scheduler, device, grad_clip=grad_clip)
+            loss = train_batch(accelerator, model, loss_func, batch, optimizer, lr_scheduler, device, grad_clip=grad_clip)
 
             loss = np.array(loss)
             loss_epoch.append(loss)
@@ -110,7 +113,7 @@ def train(model, loss_func, metric_func,
         loss_train.append(_loss_mean)
         loss_epoch = []
 
-        val_result = validate_epoch(model, metric_func, valid_loader, device)
+        val_result = validate_epoch(accelerator, model, metric_func, test_loader, device)
 
         loss_val.append(val_result["metric"])
         val_metric = val_result["metric"].sum()
@@ -189,7 +192,7 @@ def train(model, loss_func, metric_func,
                 formatted_timestamp = now.strftime("%Y-%m-%d_%H:%M:%S")
 
                 train_save_name = f'{epoch}_{formatted_timestamp}_{train_save_name}'
-                save_checkpoint(ckpt, os.path.join(ckpt_dir, f'{train_save_name}.ckpt'), max_keep=10)
+                save_checkpoint(ckpt, os.path.join(ckpt_dir, f'{train_save_name}.ckpt'), max_keep=10, accelerator=accelerator)
                 del ckpt
                 print(f"Epoch {epoch} | Training checkpoint saved at {ckpt_dir}/{train_save_name}")
 
@@ -198,7 +201,7 @@ def train(model, loss_func, metric_func,
 
 
 
-def train_batch(model, loss_func, data, optimizer, lr_scheduler, device, grad_clip=0.999):
+def train_batch(accelerator, model, loss_func, data, optimizer, lr_scheduler, device, grad_clip=0.999):
     optimizer.zero_grad()
 
     g, u_p, g_u = data
@@ -212,7 +215,9 @@ def train_batch(model, loss_func, data, optimizer, lr_scheduler, device, grad_cl
     y_pred, y = out.squeeze(), g.ndata['y'].squeeze()
     loss, reg,  _ = loss_func(g, y_pred, y)
     loss = loss + reg
-    loss.backward()
+
+    accelerator.backward(loss)
+    #loss.backward()
     nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
     optimizer.step()
 
@@ -225,10 +230,10 @@ def train_batch(model, loss_func, data, optimizer, lr_scheduler, device, grad_cl
 
 
 
-def validate_epoch(model, metric_func, valid_loader, device):
+def validate_epoch(accelerator, model, metric_func, test_loader, device):
     model.eval()
     metric_val = []
-    for _, data in enumerate(valid_loader):
+    for _, data in enumerate(test_loader):
         with torch.no_grad():
             g, u_p, g_u = data
             g, g_u, u_p = g.to(device), g_u.to(device), u_p.to(device)
@@ -237,17 +242,32 @@ def validate_epoch(model, metric_func, valid_loader, device):
 
             y_pred, y = out.squeeze(), g.ndata['y'].squeeze()
             _, _, metric = metric_func(g, y_pred, y)
+            metric_b = accelerator.gather_for_metrics((metric))
 
-            metric_val.append(metric)
-    return dict(metric=np.mean(metric_val, axis=0))
+            # Ensure metric_b is a tensor and move it to CPU
+            if isinstance(metric_b, torch.Tensor):
+                metric_val.append(metric_b.cpu().numpy())
+            else:
+                # If metric_b is not a tensor, convert it to a tensor first
+                metric_b = torch.tensor(metric_b, device=device)
+                metric_val.append(metric_b.cpu().numpy())
+
+    result = dict(metric=np.concatenate(metric_val).mean(axis=0))
+    return result
 
 
 if __name__ == "__main__":
     args = get_args()
+
+    accelerator = Accelerator(split_batches=False)
+
     if not args.no_cuda and torch.cuda.is_available():
         device = torch.device('cuda:{}'.format(str(args.gpu)))
     else:
         device = torch.device("cpu")
+
+    device = accelerator.device
+    print(device)
 
     kwargs = {'pin_memory': False} if args.gpu else {}
     get_seed(args.seed, printout=False)
@@ -256,8 +276,8 @@ if __name__ == "__main__":
     train_dataset, test_dataset = get_dataset(args)
     # test_dataset = get_dataset(args)
 
-    train_loader = MIODataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False)
-    test_loader = MIODataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False)
+    train_loader = MIODataLoader(train_dataset, batch_size=args.batch_size, collate_fn = collate_op, shuffle=True, drop_last=False)
+    test_loader = MIODataLoader(test_dataset, batch_size=args.batch_size, collate_fn = collate_op, shuffle=True, drop_last=False)
 
     args.space_dim = int(re.search(r'\d', args.dataset).group())
     args.y_normalizer =  train_dataset.y_normalizer.to(device) if train_dataset.y_normalizer is not None else None
@@ -338,7 +358,9 @@ if __name__ == "__main__":
 
     save_every = args.save_every
 
-    result = train(model, loss_func, metric_func,
+    model, optimizer, scheduler, train_loader, test_loader = accelerator.prepare(model, optimizer, scheduler, train_loader, test_loader)
+
+    result = train(accelerator, model, loss_func, metric_func,
                        train_loader, test_loader,
                        optimizer, scheduler,
                        save_every,
@@ -355,11 +377,14 @@ if __name__ == "__main__":
 
     print('Training takes {} seconds.'.format(time.time() - time_start))
 
+    accelerator.wait_for_everyone()
+    unwrapped_model = accelerator.unwrap_model(model)
     # result['args'], result['config'] = args, config
-    checkpoint = {'args':args, 'model':model.state_dict(),'optimizer':optimizer.state_dict()}
+    checkpoint = {'args':args, 'model':unwrapped_model.state_dict(),'optimizer':optimizer.state_dict()}
+
     torch.save(checkpoint, os.path.join('./hidden256/checkpoints/{}'.format(model_path)))
     model.eval()
-    val_metric = validate_epoch(model, metric_func, test_loader, device)
+    val_metric = validate_epoch(accelerator, model, metric_func, test_loader, device)
     print(f"\nBest model's validation metric in this run: {val_metric}")
 
 
