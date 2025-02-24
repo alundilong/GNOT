@@ -65,7 +65,7 @@ class LinearAttention(nn.Module):
     '''
         Linear Attention and Linear Cross Attention (if y is provided)
     '''
-    def forward(self, x, y=None, layer_past=None):
+    def forward(self, x, y=None, layer_past=None, return_attn=False):
         y = x if y is None else y
         B, T1, C = x.size()
         _, T2, _ = y.size()
@@ -93,11 +93,17 @@ class LinearAttention(nn.Module):
             raise NotImplementedError
 
         context = k.transpose(-2, -1) @ v
+        if return_attn:
+            attn_weights = q @ k.transpose(-2, -1) # Attention matrix (B, nh, T1, T2)
         y = self.attn_drop((q @ context) * D_inv + q)
 
         # output projection
         y = rearrange(y, 'b h n d -> b n (h d)')
         y = self.proj(y)
+
+        if return_attn:
+            return y, attn_weights  # Returning both output and attention weights
+
         return y
 
 
@@ -228,19 +234,25 @@ class MIOECrossAttentionBlock(nn.Module):
     '''
         x: [B, T1, C], y:[B, T2, C], pos:[B, T1, n]
     '''
-    def forward(self, x, y, pos):
+    def forward(self, x, y, pos, return_attn = False):
         gate_score = F.softmax(self.gatenet(pos),dim=-1).unsqueeze(2)    # B, T1, 1, m
         x = x + self.resid_drop1(self.crossattn(self.ln1(x), self.ln_branchs(y)))
         x_moe1 = torch.stack([self.moe_mlp1[i](x) for i in range(self.n_experts)],dim=-1) # B, T1, C, m
         x_moe1 = (gate_score*x_moe1).sum(dim=-1,keepdim=False)
         x = x + self.ln3(x_moe1)
-        x = x + self.resid_drop2(self.selfattn(self.ln4(x)))
+        if return_attn:
+            tmp,attn_weights = self.selfattn(self.ln4(x),return_attn=return_attn)
+        else:
+            tmp = self.selfattn(self.ln4(x))
+        x = x + self.resid_drop2(tmp)
         x_moe2 = torch.stack([self.moe_mlp2[i](x) for i in range(self.n_experts)],dim=-1) # B, T1, C, m
         x_moe2 = (gate_score*x_moe2).sum(dim=-1,keepdim=False)
         x = x + self.ln5(x_moe2)
         #print(f"Allocated: {torch.cuda.memory_allocated() / 1e9:.2g} GB")
         #print(f"Reserved: {torch.cuda.memory_reserved() / 1e9:.2g} GB")
         #print(f"Max Allocated: {torch.cuda.max_memory_allocated() / 1e9:.2g} GB")
+        if return_attn:
+            return x, attn_weights
         return x
 
     #### No layernorm
@@ -315,7 +327,7 @@ class GNOT(nn.Module):
 
 
 
-    def forward(self, g, u_p, inputs):
+    def forward(self, g, u_p, inputs, return_attn = False):
         gs = dgl.unbatch(g)
         x = pad_sequence([_g.ndata['x'] for _g in gs]).permute(1, 0, 2)  # B, T1, F
 
@@ -331,9 +343,28 @@ class GNOT(nn.Module):
         x = self.trunk_mlp(x)
         z = MultipleTensors([self.branch_mlps[i](inputs[i]) for i in range(self.n_inputs)])
 
-        for block in self.blocks:
-            x = block(x, z, pos)
+        attn_weights_list = []
+        if return_attn:
+            for block in self.blocks:
+                x, attn_weights = block(x, z, pos, return_attn=return_attn)
+                attn_weights_list.append(attn_weights)
+        else:
+            for block in self.blocks:
+                x = block(x, z, pos)
         x = self.out_mlp(x)
 
         x_out = torch.cat([x[i, :num] for i, num in enumerate(g.batch_num_nodes())],dim=0)
+
+        if return_attn:
+            return x_out, attn_weights_list
+
         return x_out
+
+    def get_attention_weights(self, g, u_p, inputs):
+        """
+        Returns attention weights for visualization.
+        """
+        with torch.no_grad():
+            output , attn_weights_list = self.forward(g, u_p, inputs, return_attn=True)
+        return output, attn_weights_list
+
