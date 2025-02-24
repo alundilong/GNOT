@@ -173,7 +173,7 @@ if __name__ == "__main__":
     path = '/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs/max_16_min_11_points_8/'
 
     case_tag = "nolong"
-    res=100
+    res = 100
     dt = 200
     duration = 2000
     root_dir = f'/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs_time10_res{res}/'
