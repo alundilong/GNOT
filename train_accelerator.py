@@ -90,19 +90,25 @@ def train(accelerator, model, loss_func, metric_func,
             it += 1
             lr = optimizer.param_groups[0]['lr']
             lr_history.append(lr)
-            log = f"epoch: [{epoch+1}/{end_epoch}]"
+            log = ""
+            if accelerator.is_main_process:
+                log = f"epoch: [{epoch+1}/{end_epoch}]"
             if loss.ndim == 0:  # 1 target loss
                 _loss_mean = np.mean(loss_epoch)
-                log += " loss: {:.6f}".format(_loss_mean)
+                if accelerator.is_main_process:
+                    log += " loss: {:.6f}".format(_loss_mean)
             else:
                 _loss_mean = np.mean(loss_epoch, axis=0)
                 for j in range(len(_loss_mean)):
-                    log += " | loss {}: {:.6f}".format(j, _loss_mean[j])
-            log += " | current lr: {:.3e}".format(lr)
+                    if accelerator.is_main_process:
+                        log += " | loss {}: {:.6f}".format(j, _loss_mean[j])
+            if accelerator.is_main_process:
+                log += " | current lr: {:.3e}".format(lr)
 
             if it % print_freq==0:
-                #print(log)
-                pbar.set_description(log)
+                if accelerator.is_main_process:
+                    #print(log)
+                    pbar.set_description(log)
 
             if writer is not None:
                 for j in range(len(_loss_mean)):
@@ -118,7 +124,6 @@ def train(accelerator, model, loss_func, metric_func,
         loss_val.append(val_result["metric"])
         val_metric = val_result["metric"].sum()
 
-
         if val_metric < best_val_metric or math.isnan(val_metric):
             best_val_epoch = epoch
             best_val_metric = val_metric
@@ -132,12 +137,14 @@ def train(accelerator, model, loss_func, metric_func,
 
 
         if val_result["metric"].size == 1:
-            log = "| val metric 0: {:.6f} ".format(val_metric)
+            if accelerator.is_main_process:
+                log = "| val metric 0: {:.6f} ".format(val_metric)
 
         else:
-            log = ''
-            for i, metric_i in enumerate(val_result['metric']):
-                log += '| val metric {} : {:.6f} '.format(i, metric_i)
+            if accelerator.is_main_process:
+                log = ''
+                for i, metric_i in enumerate(val_result['metric']):
+                    log += '| val metric {} : {:.6f} '.format(i, metric_i)
 
         if writer is not None:
             if val_result["metric"].size == 1:
@@ -147,19 +154,22 @@ def train(accelerator, model, loss_func, metric_func,
                     writer.add_scalar('val loss {}'.format(i), metric_i, epoch)
 
 
-        log += "| best val: {:.6f} at epoch {} | current lr: {:.3e}".format(best_val_metric, best_val_epoch+1, lr)
+        if accelerator.is_main_process:
+            log += "| best val: {:.6f} at epoch {} | current lr: {:.3e}".format(best_val_metric, best_val_epoch+1, lr)
 
         desc_ep = ""
-        if _loss_mean.ndim == 0:  # 1 target loss
-            desc_ep += "| loss: {:.6f}".format(_loss_mean)
-        else:
-            for j in range(len(_loss_mean)):
-                if _loss_mean[j] > 0:
-                    desc_ep += "| loss {}: {:.3e}".format(j, _loss_mean[j])
+        if accelerator.is_main_process:
+            if _loss_mean.ndim == 0:  # 1 target loss
+                desc_ep += "| loss: {:.6f}".format(_loss_mean)
+            else:
+                for j in range(len(_loss_mean)):
+                    if _loss_mean[j] > 0:
+                        desc_ep += "| loss {}: {:.3e}".format(j, _loss_mean[j])
 
-        desc_ep += log
+            desc_ep += log
         #print(desc_ep)
-        pbar.set_description(desc_ep)
+        if accelerator.is_main_process:
+            pbar.set_description(desc_ep)
 
         result = dict(
             best_val_epoch=best_val_epoch,
@@ -177,24 +187,28 @@ def train(accelerator, model, loss_func, metric_func,
                 train_save_dir = model_save_path
                 train_save_name = model_name
 
-                ckpt = {
-                    'model': model.state_dict(),
-                    'epoch': epoch,
-                    'optimizer': optimizer.state_dict(),
-                    'scheduler': scheduler.state_dict(),
-                    'args': args
-                }
-                ckpt_dir = train_save_dir
-                if not os.path.exists(ckpt_dir):
-                    os.makedirs(ckpt_dir)
+                accelerator.wait_for_everyone()
+                unwrapped_model = accelerator.unwrap_model(model)
 
-                now = datetime.now()
-                formatted_timestamp = now.strftime("%Y-%m-%d_%H:%M:%S")
+                if accelerator.is_main_process:
+                    ckpt = {
+                        'model': unwrapped_model.state_dict(),
+                        'epoch': epoch,
+                        'optimizer': optimizer.state_dict(),
+                        'scheduler': scheduler.state_dict(),
+                        'args': args
+                    }
+                    ckpt_dir = train_save_dir
+                    if not os.path.exists(ckpt_dir):
+                        os.makedirs(ckpt_dir)
 
-                train_save_name = f'{epoch}_{formatted_timestamp}_{train_save_name}'
-                save_checkpoint(ckpt, os.path.join(ckpt_dir, f'{train_save_name}.ckpt'), max_keep=10, accelerator=accelerator)
-                del ckpt
-                print(f"Epoch {epoch} | Training checkpoint saved at {ckpt_dir}/{train_save_name}")
+                    now = datetime.now()
+                    formatted_timestamp = now.strftime("%Y-%m-%d_%H:%M:%S")
+
+                    train_save_name = f'{epoch}_{formatted_timestamp}_{train_save_name}'
+                    save_checkpoint(ckpt, os.path.join(ckpt_dir, f'{train_save_name}.ckpt'), max_keep=10)
+                    del ckpt
+                    print(f"Epoch {epoch} | Training checkpoint saved at {ckpt_dir}/{train_save_name}")
 
     return result
 
@@ -242,18 +256,20 @@ def validate_epoch(accelerator, model, metric_func, test_loader, device):
 
             y_pred, y = out.squeeze(), g.ndata['y'].squeeze()
             _, _, metric = metric_func(g, y_pred, y)
-            metric_b = accelerator.gather_for_metrics((metric))
+            metric = torch.tensor(metric, device=accelerator.device)
+            # Gather metrics from all GPUs
+            gathered_metric = accelerator.gather(metric)
+            final_metric = accelerator.reduce(metric, reduction="mean")
 
-            # Ensure metric_b is a tensor and move it to CPU
-            if isinstance(metric_b, torch.Tensor):
-                metric_val.append(metric_b.cpu().numpy())
-            else:
-                # If metric_b is not a tensor, convert it to a tensor first
-                metric_b = torch.tensor(metric_b, device=device)
-                metric_val.append(metric_b.cpu().numpy())
+            metric_val.append(final_metric.cpu().numpy())  # Move to CPU before storing
 
-    result = dict(metric=np.concatenate(metric_val).mean(axis=0))
-    return result
+    # Synchronize across all processes
+    accelerator.wait_for_everyone()
+
+    # Compute final mean metric
+    final_metric = np.mean(metric_val, axis=0)
+
+    return dict(metric=final_metric)
 
 
 if __name__ == "__main__":
@@ -304,14 +320,17 @@ if __name__ == "__main__":
 
     start_epoch = 0
     if args.lr_method == 'cycle':
-        print('Using cycle learning rate schedule')
+        if accelerator.is_main_process:
+            print('Using cycle learning rate schedule')
         scheduler = OneCycleLR(optimizer, max_lr=lr, div_factor=1e4, pct_start=0.2, final_div_factor=1e4, \
                 steps_per_epoch=len(train_loader), epochs=epochs)
     elif args.lr_method == 'step':
-        print('Using step learning rate schedule')
+        if accelerator.is_main_process:
+            print('Using step learning rate schedule')
         scheduler = StepLR(optimizer, step_size=args.lr_step_size*len(train_loader), gamma=0.7)
     elif args.lr_method == 'warmup':
-        print('Using warmup learning rate schedule')
+        if accelerator.is_main_process:
+            print('Using warmup learning rate schedule')
         scheduler = LambdaLR(optimizer, lambda steps: min((steps+1)/(args.warmup_epochs * len(train_loader)), np.power(args.warmup_epochs * len(train_loader)/float(steps + 1), 0.5)))
 
     if args.resume:
@@ -328,12 +347,14 @@ if __name__ == "__main__":
         epochs = epochs - start_epoch
         scheduler.load_state_dict(ckpt['scheduler'])
     model = model.to(device)
-    print(f"\nModel: {model.__name__}\t Number of params: {get_num_params(model)}")
+    if accelerator.is_main_process:
+        print(f"\nModel: {model.__name__}\t Number of params: {get_num_params(model)}")
 
     path_prefix = args.dataset  + '_{}_'.format(args.component) + model.__name__ + args.comment + time.strftime('_%m%d_%H_%M_%S')
     model_path, result_path = path_prefix + '.pt', path_prefix + '.pkl'
 
-    print(f"Saving model and result in ./../models/checkpoints/{model_path}\n")
+    if accelerator.is_main_process:
+        print(f"Saving model and result in ./../models/checkpoints/{model_path}\n")
 
 
 
@@ -375,7 +396,8 @@ if __name__ == "__main__":
                        writer=writer,
                        device=device)
 
-    print('Training takes {} seconds.'.format(time.time() - time_start))
+    if accelerator.is_main_process:
+        print('Training takes {} seconds.'.format(time.time() - time_start))
 
     accelerator.wait_for_everyone()
     unwrapped_model = accelerator.unwrap_model(model)
@@ -385,7 +407,8 @@ if __name__ == "__main__":
     torch.save(checkpoint, os.path.join('./hidden256/checkpoints/{}'.format(model_path)))
     model.eval()
     val_metric = validate_epoch(accelerator, model, metric_func, test_loader, device)
-    print(f"\nBest model's validation metric in this run: {val_metric}")
+    if accelerator.is_main_process:
+        print(f"\nBest model's validation metric in this run: {val_metric}")
 
 
 

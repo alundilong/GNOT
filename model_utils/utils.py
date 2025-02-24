@@ -3,7 +3,7 @@ import shutil
 import numpy as np
 import torch
 
-def save_checkpoint(state, save_path: str, is_best: bool = False, max_keep: int = None, accelerator = None):
+def save_checkpoint(state, save_path: str, is_best: bool = False, max_keep: int = None):
     """Saves torch model to checkpoint file.
     Args:
         state (torch model state): State of a torch Neural Network
@@ -12,9 +12,6 @@ def save_checkpoint(state, save_path: str, is_best: bool = False, max_keep: int 
             ``best_model.ckpt``
         max_keep (int): Specifies the max amount of checkpoints to keep
     """
-
-    if accelerator != None:
-        accelerator.wait_for_everyone()
 
     # save checkpoint
     torch.save(state, save_path)
