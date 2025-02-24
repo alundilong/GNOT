@@ -5,6 +5,9 @@ import torch
 import numpy as np
 import torch.nn as nn
 import dgl
+
+import seaborn as sns
+
 import matplotlib.pyplot as plt
 from dgl.dataloading import GraphDataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -17,7 +20,7 @@ import os
 
 if __name__ == "__main__":
 
-    ckpt_dir_or_file = './data/checkpoints/'
+    ckpt_dir_or_file = './mymodels/checkpoints/'
     with open(os.path.join(ckpt_dir_or_file, 'latest_checkpoint.txt')) as f:
         ckpt_path = os.path.join(ckpt_dir_or_file, f.readline()[:-1])
     model_path = ckpt_path
@@ -30,7 +33,7 @@ if __name__ == "__main__":
     vis_component = 0 if args.component == 'all' else int(args.component)
     frame = 10
     npoints = 2500+200
-    vis_component = 3
+    vis_component = 4
 
     device = torch.device('cpu')
 
@@ -56,7 +59,47 @@ if __name__ == "__main__":
         idx = 0
         g, u_p, g_u =  list(iter(test_loader))[idx]
         # u_p = u_p.unsqueeze(0)      ### test if necessary
-        out = model(g, u_p, g_u)
+        out, attn_weights_list = model.get_attention_weights(g, u_p, g_u)
+
+        def attention_entropy(attn_probs):
+            """
+            Compute entropy for each attention head to assess how spread out attention is.
+            """
+            print(f'{attn_probs.min()} {attn_probs.max()} {attn_probs.shape}')
+            entropy = -np.sum(attn_probs * np.log(attn_probs + 1e-9), axis=-1)
+            return np.mean(entropy)
+
+        def downsample_attention_map(attn_map, target_size=512):
+            """
+            Downsamples the large attention matrix to a manageable size using interpolation.
+            :param attn_map: (T, T) original attention map
+            :param target_size: Target size for downsampling (default: 512x512)
+            :return: Downsampled attention map
+            """
+            attn_map = torch.tensor(attn_map).unsqueeze(0).unsqueeze(0)  # Add batch & channel dims
+            attn_map = torch.nn.functional.interpolate(attn_map, size=(target_size, target_size), mode="bilinear", align_corners=False)
+            return attn_map.squeeze().numpy()
+
+        # Visualize each layer's attention map
+        def visualize_attention_layers(attn_weights_list, head_idx=0):
+            num_layers = len(attn_weights_list)
+            fig, axes = plt.subplots(1, num_layers, figsize=(15, 5))
+
+        
+            for i in range(num_layers):
+                attn_map = attn_weights_list[i].squeeze(0).cpu().numpy()[head_idx]  # Extract single head
+                attn_map = downsample_attention_map(attn_map, target_size=512)
+                attn_entropy = attention_entropy(attn_map)
+                print(f"Average Attention Entropy: {attn_entropy}")
+
+                sns.heatmap(attn_map, cmap="viridis", ax=axes[i])
+                axes[i].set_title(f"Layer {i+1} - Head {head_idx}")
+        
+            plt.savefig(f'attention.png', dpi=300, bbox_inches='tight')
+            plt.show()
+
+        # Visualize attention for a specific head across all layers
+        visualize_attention_layers(attn_weights_list, head_idx=0)
 
         if args.x_normalizer is not None:
             g.ndata['x'] = args.x_normalizer.transform(g.ndata['x'],inverse=True)
@@ -151,8 +194,7 @@ if __name__ == "__main__":
 
         plt.show()
         print(f'....................> {vis_component}')
-    
-        #exit(1)
+        exit(1)
 
         myIndex = 0
         mypred = out[:,myIndex].squeeze().cpu().numpy()
