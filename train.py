@@ -274,6 +274,16 @@ if __name__ == "__main__":
     if args.resume:
         ckpt = load_checkpoint('./data/checkpoints/')
         model.load_state_dict(ckpt['model'])
+        optimizer.load_state_dict(ckpt['optimizer']);
+
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(device)  # Automatically match the model's device
+
+        start_epoch = ckpt['epoch']
+        epochs = epochs - start_epoch
+        scheduler.load_state_dict(ckpt['scheduler'])
     model = model.to(device)
     print(f"\nModel: {model.__name__}\t Number of params: {get_num_params(model)}")
 
@@ -314,7 +324,8 @@ if __name__ == "__main__":
 
     if args.lr_method == 'cycle':
         print('Using cycle learning rate schedule')
-        scheduler = OneCycleLR(optimizer, max_lr=lr, div_factor=1e4, pct_start=0.2, final_div_factor=1e4, steps_per_epoch=len(train_loader), epochs=epochs)
+        scheduler = OneCycleLR(optimizer, max_lr=lr, div_factor=1e4, pct_start=0.2, final_div_factor=1e4, \
+                steps_per_epoch=len(train_loader), epochs=epochs)
     elif args.lr_method == 'step':
         print('Using step learning rate schedule')
         scheduler = StepLR(optimizer, step_size=args.lr_step_size*len(train_loader), gamma=0.7)
@@ -332,6 +343,7 @@ if __name__ == "__main__":
                        optimizer, scheduler,
                        save_every,
                        args,
+                       start_epoch = start_epoch,
                        epochs=epochs,
                        grad_clip=args.grad_clip,
                        patience=None,
