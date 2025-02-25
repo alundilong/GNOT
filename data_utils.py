@@ -51,9 +51,9 @@ def get_dataset(args):
         else:
             #train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/train_1.pkl"
             #test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/test_1.pkl"
-            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/notime_train_1.pkl"
-            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/notime_test_1.pkl"
-    if args.dataset == "porousmelting2d":
+            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/train_1.pkl"
+            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/test_1.pkl"
+    elif args.dataset == "porousmelting2d":
             train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/notime_train_1.pkl"
             test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/notime_test_1.pkl"
 
@@ -512,7 +512,6 @@ class MIODataset(DGLDataset):
             'branch_sizes': [x.shape[1] for x in self.inputs_f[0]] if isinstance(self.inputs_f, list) else 0
 
         }
-        print(f'---------------------> {self.config}')
         return
 
 
@@ -595,11 +594,35 @@ class WeightedLpRelLoss(_WeightedLoss):
         self.sum_pool = SumPooling()
 
     ### all reduce is used in temporal cases, use only one metric for all components
-    def _lp_losses(self, g, pred, target):
+    def _lp_losses(self, g, pred, target, mask=None, mask_channels=None):
         if (self.component == 'all') or (self.component == 'all-reduce'):
-            err_pool = (self.sum_pool(g, (pred - target).abs() ** self.p))
-            target_pool = (self.sum_pool(g, target.abs() ** self.p))
-            losses = (err_pool / target_pool)**(1/ self.p)
+
+            N, C = pred.shape
+            total_err_pool = 0
+            total_target_pool = 0
+
+            batch_size = g.batch_size
+            losses = torch.zeros(batch_size, C,device=pred.device)  # Store per-channel losses
+
+            for c in range(C):
+                pred_channel = pred[:, c]  # Extract current channel (batch, N)
+                target_channel = target[:, c]
+
+                # Compute element-wise absolute error
+                error = (pred_channel - target_channel).abs() ** self.p
+                target_abs = target_channel.abs() ** self.p
+
+                if mask is not None and mask_channels is not None and c in mask_channels:
+                    # Apply mask only for specified channels
+                    error = error * mask
+                    target_abs = target_abs * mask
+
+                # Perform sum pooling
+                err_pool = self.sum_pool(g, error)
+                target_pool = self.sum_pool(g, target_abs)
+
+                losses[:,c] = (err_pool / target_pool) ** (1 / self.p)
+
             if self.component == 'all':
                 metrics = losses.mean(dim=0).clone().detach().cpu().numpy()
             else:
@@ -616,16 +639,16 @@ class WeightedLpRelLoss(_WeightedLoss):
 
         return loss, metrics
 
-    def forward(self, g,  pred, target):
+    def forward(self, g,  pred, target, mask=None, mask_channels=None):
 
         #### only for computing metrics
 
 
-        loss, metrics = self._lp_losses(g, pred, target)
+        loss, metrics = self._lp_losses(g, pred, target, mask=mask, mask_channels = mask_channels)
 
         if self.normalizer is not None:
             ori_pred, ori_target = self.normalizer.transform(pred,component=self.component,inverse=True), self.normalizer.transform(target, inverse=True)
-            _, metrics = self._lp_losses(g, ori_pred, ori_target)
+            _, metrics = self._lp_losses(g, ori_pred, ori_target, mask=mask, mask_channels = mask_channels)
 
         if self.regularizer:
             raise NotImplementedError
