@@ -49,8 +49,13 @@ def get_dataset(args):
             train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
             test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/runs"
         else:
-            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/train.pkl"
-            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/test_1.pkl"
+            #train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/train_1.pkl"
+            #test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/test_1.pkl"
+            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/notime_train_1.pkl"
+            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/notime_test_1.pkl"
+    if args.dataset == "porousmelting2d":
+            train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/notime_train_1.pkl"
+            test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/notime_test_1.pkl"
 
     else:
         raise NotImplementedError
@@ -316,7 +321,7 @@ class MIODataset(DGLDataset):
         if not os.path.exists(self.cached_path):
             data_all = []
             if not openfoam:
-                data_all = pickle.load(open(self.data_path, "rb")) #[::4]
+                data_all = pickle.load(open(self.data_path, "rb")) #[:16]
             else:
                 device = torch.device('cpu')
                 bc_names=['front','back']
@@ -324,7 +329,7 @@ class MIODataset(DGLDataset):
                 duration = 1000
                 loader = openfoam_data_loader(self.data_path,dt,duration,rank=device,bc_names=bc_names)
                 data_all = loader.data_all
-        
+            '''
             # Your list of 2D coordinates
             coordinates = data_all[0][0]
             # Open a file in write mode
@@ -346,7 +351,7 @@ class MIODataset(DGLDataset):
                 # Iterate through each coordinate and write it to the file
                 for coord in coordinates:
                     file.write(f"{coord[0]} {coord[1]}\n")
-
+            '''
             #print(f'{len(data_all[0][0])}{data_all[0][0]}')
             #print(f'{data_all[0][1]}')
             #print(f'{data_all[0][2]}')
