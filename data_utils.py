@@ -512,6 +512,7 @@ class MIODataset(DGLDataset):
             'branch_sizes': [x.shape[1] for x in self.inputs_f[0]] if isinstance(self.inputs_f, list) else 0
 
         }
+        print(f'{self.config}')
         return
 
 

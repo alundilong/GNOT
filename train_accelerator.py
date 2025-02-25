@@ -55,7 +55,7 @@ def train(accelerator, model, loss_func, metric_func,
               grad_clip=0.999,
               start_epoch: int = 0,
               print_freq: int = 20,
-              model_save_path='./hidden256/checkpoints/',
+              model_save_path='./mymodels/checkpoints/',
               save_mode='state_dict',  # 'state_dict' or 'entire'
               model_name='model.pt',
               result_name='result.pt'):
@@ -83,7 +83,7 @@ def train(accelerator, model, loss_func, metric_func,
         #for batch in train_loader:
         for _, batch in enumerate(train_loader):
 
-            loss = train_batch(accelerator, model, loss_func, batch, optimizer, lr_scheduler, device, grad_clip=grad_clip)
+            loss = train_batch(accelerator, model, loss_func, batch, optimizer, lr_scheduler, device, args = args, grad_clip=grad_clip)
 
             loss = np.array(loss)
             loss_epoch.append(loss)
@@ -215,7 +215,7 @@ def train(accelerator, model, loss_func, metric_func,
 
 
 
-def train_batch(accelerator, model, loss_func, data, optimizer, lr_scheduler, device, grad_clip=0.999):
+def train_batch(accelerator, model, loss_func, data, optimizer, lr_scheduler, device, args = None, grad_clip=0.999):
     optimizer.zero_grad()
 
     g, u_p, g_u = data
@@ -227,6 +227,18 @@ def train_batch(accelerator, model, loss_func, data, optimizer, lr_scheduler, de
 
 
     y_pred, y = out.squeeze(), g.ndata['y'].squeeze()
+    '''
+    # mask_channels = ux,uy,p,alpha
+    if args is not None:
+        mask = args.x_normalizer.transform(g.ndata['x'],inverse=True)[:,-1]
+        mask_channels=[0,1,2,4]
+    else:
+        mask = None
+        mask_channels=[]
+
+    mask = None
+    loss, reg,  _ = loss_func(g, y_pred, y, mask = mask, mask_channels=mask_channels)
+    '''
     loss, reg,  _ = loss_func(g, y_pred, y)
     loss = loss + reg
 
@@ -334,7 +346,7 @@ if __name__ == "__main__":
         scheduler = LambdaLR(optimizer, lambda steps: min((steps+1)/(args.warmup_epochs * len(train_loader)), np.power(args.warmup_epochs * len(train_loader)/float(steps + 1), 0.5)))
 
     if args.resume:
-        ckpt = load_checkpoint('./hidden256/checkpoints/')
+        ckpt = load_checkpoint('./mymodels/checkpoints/')
         model.load_state_dict(ckpt['model'])
         optimizer.load_state_dict(ckpt['optimizer']);
 
@@ -359,7 +371,7 @@ if __name__ == "__main__":
 
 
     if args.use_tb:
-        writer_path =  './hidden256/logs/' + path_prefix
+        writer_path =  './mymodels/logs/' + path_prefix
         log_path = writer_path + '/params.txt'
         writer = SummaryWriter(log_dir=writer_path)
         fp = open(log_path, "w+")
@@ -391,7 +403,7 @@ if __name__ == "__main__":
                        grad_clip=args.grad_clip,
                        patience=None,
                        model_name=model_path,
-                       model_save_path='./hidden256/checkpoints/',
+                       model_save_path='./mymodels/checkpoints/',
                        result_name=result_path,
                        writer=writer,
                        device=device)
@@ -404,7 +416,7 @@ if __name__ == "__main__":
     # result['args'], result['config'] = args, config
     checkpoint = {'args':args, 'model':unwrapped_model.state_dict(),'optimizer':optimizer.state_dict()}
 
-    torch.save(checkpoint, os.path.join('./hidden256/checkpoints/{}'.format(model_path)))
+    torch.save(checkpoint, os.path.join('./mymodels/checkpoints/{}'.format(model_path)))
     model.eval()
     val_metric = validate_epoch(accelerator, model, metric_func, test_loader, device)
     if accelerator.is_main_process:
