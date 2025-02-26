@@ -402,11 +402,18 @@ class MIODataset(DGLDataset):
         self.inputs_f = []
         self.u_p = []
         for i in range(len(self)):
-            x, y, u_p, input_f = self.data_list[i]
+            size = len(self.data_list[i])
+            if size == 5:
+                x, y, u_p, input_f, mask = self.data_list[i]
+            else:
+                x, y, u_p, input_f = self.data_list[i]
+                mask = None
             g = dgl.DGLGraph()
             g.add_nodes(x.shape[0])
             g.ndata['x'] = torch.from_numpy(x).float()
             g.ndata['y'] = torch.from_numpy(y).float()
+            if mask is not None:
+                g.ndata['mask'] = torch.from_numpy(mask).float()
             up = torch.from_numpy(u_p).float()
             self.graphs.append(g)
             self.u_p.append(up) # global input parameters
