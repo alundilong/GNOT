@@ -547,7 +547,6 @@ class MIODataLoader(torch.utils.data.DataLoader):
 
 
     def __iter__(self):
-        # 返回一个迭代器，用于遍历数据集中的每个批次
         for indices in self.batch_indices:
             transposed = zip(*[self.dataset[idx] for idx in indices])
             batched = []
@@ -565,7 +564,6 @@ class MIODataLoader(torch.utils.data.DataLoader):
             yield batched
 
     def __len__(self):
-        # 返回数据集的批次数
         return len(self.batch_indices)
 
 
