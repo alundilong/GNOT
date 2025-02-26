@@ -14,9 +14,6 @@ def get_args():
                         default='ns2d',
                         choices = ['heat2d','ns2d','inductor2d','heatsink3d','ns2d_time','darcy2d','porousmelting3d','porousmelting2d',])
 
-    parser.add_argument('--openfoam', action='store_true', default=False,
-                        help='cfd data with openfoam format')
-
     parser.add_argument('--resume', action='store_true', default=False,
                         help='resume training')
 
