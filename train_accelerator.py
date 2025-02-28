@@ -83,7 +83,7 @@ def train(accelerator, model, loss_func, metric_func,
         #for batch in train_loader:
         for _, batch in enumerate(train_loader):
 
-            loss = train_batch(accelerator, model, loss_func, batch, optimizer, lr_scheduler, device, args = args, grad_clip=grad_clip)
+            loss = train_batch(accelerator, model, loss_func, batch, optimizer, lr_scheduler, device, grad_clip=grad_clip)
 
             loss = np.array(loss)
             loss_epoch.append(loss)
@@ -215,7 +215,7 @@ def train(accelerator, model, loss_func, metric_func,
 
 
 
-def train_batch(accelerator, model, loss_func, data, optimizer, lr_scheduler, device, args = None, grad_clip=0.999):
+def train_batch(accelerator, model, loss_func, data, optimizer, lr_scheduler, device, grad_clip=0.999):
     optimizer.zero_grad()
 
     g, u_p, g_u = data
@@ -227,19 +227,14 @@ def train_batch(accelerator, model, loss_func, data, optimizer, lr_scheduler, de
 
 
     y_pred, y = out.squeeze(), g.ndata['y'].squeeze()
-    '''
-    # mask_channels = ux,uy,p,alpha
-    if args is not None:
-        mask = args.x_normalizer.transform(g.ndata['x'],inverse=True)[:,-1]
-        mask_channels=[0,1,2,4]
-    else:
-        mask = None
-        mask_channels=[]
 
-    mask = None
-    loss, reg,  _ = loss_func(g, y_pred, y, mask = mask, mask_channels=mask_channels)
-    '''
-    loss, reg,  _ = loss_func(g, y_pred, y)
+    mask = g.ndata.get('mask', None)
+
+    if mask is not None:
+        mask_channels=[0,1,2,4]
+        loss, reg,  _ = loss_func(g, y_pred, y, mask = mask, mask_channels=mask_channels)
+    else:
+        loss, reg,  _ = loss_func(g, y_pred, y)
     loss = loss + reg
 
     accelerator.backward(loss)
@@ -267,7 +262,14 @@ def validate_epoch(accelerator, model, metric_func, test_loader, device):
             out = model(g, u_p, g_u)
 
             y_pred, y = out.squeeze(), g.ndata['y'].squeeze()
-            _, _, metric = metric_func(g, y_pred, y)
+            
+            mask = g.ndata.get('mask', None)
+
+            if mask is not None:
+                mask_channels=[0,1,2,4]
+                _, _, metric = metric_func(g, y_pred, y, mask = mask, mask_channels = mask_channels)
+            else:
+                _, _, metric = metric_func(g, y_pred, y)
             metric = torch.tensor(metric, device=accelerator.device)
             # Gather metrics from all GPUs
             gathered_metric = accelerator.gather(metric)
