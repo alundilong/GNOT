@@ -14,6 +14,12 @@ def get_args():
                         default='ns2d',
                         choices = ['heat2d','ns2d','inductor2d','heatsink3d','ns2d_time','darcy2d','porousmelting3d','porousmelting2d',])
 
+    parser.add_argument(
+        "--channels-to-mask", type=float, nargs='+',  # Accepts multiple float values
+        help="A list of channel number imposed with mask",
+        default = [0,1,2,4]
+    )
+
     parser.add_argument('--resume', action='store_true', default=False,
                         help='resume training')
 

@@ -327,12 +327,12 @@ class GNOT(nn.Module):
 
 
 
-    def forward(self, g, u_p, inputs, return_attn = False):
+    def forward(self, g, u_p, inputs, return_attn = False, channels_to_mask=None):
         gs = dgl.unbatch(g)
         x = pad_sequence([_g.ndata['x'] for _g in gs]).permute(1, 0, 2)  # B, T1, F
 
         pos = x[:,:,0:self.space_dim]
-
+        mask = g.ndata.get('mask', None)
 
         x = torch.cat([x, u_p.unsqueeze(1).repeat([1, x.shape[1], 1])], dim=-1)
 
@@ -354,6 +354,11 @@ class GNOT(nn.Module):
         x = self.out_mlp(x)
 
         x_out = torch.cat([x[i, :num] for i, num in enumerate(g.batch_num_nodes())],dim=0)
+
+        if mask is not None and channels_to_mask is not None:
+            for i in range(x_out.shape[1]):
+                if i in channels_to_mask:
+                    x_out[:,i] = x_out[:,i]*mask
 
         if return_attn:
             return x_out, attn_weights_list
