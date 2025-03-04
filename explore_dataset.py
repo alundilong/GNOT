@@ -70,15 +70,24 @@ for i in range(n_channels):
 plt.tight_layout()  # This will adjust spacing between subplots to minimize overlap
 plt.show()
 
-# Scatter Plot
-plt.figure(figsize=(6, 6))
-plt.scatter(inputF[0][:, 0], inputF[0][:, 1], s=10, color='blue', alpha=0.6, edgecolor='k')
+n_channels = len(inputF)
+n_sqrt = int(np.sqrt(n_channels))  # Calculate the square root of the number of channels
+n_rows = n_sqrt if n_sqrt * n_sqrt >= n_channels else n_sqrt + 1
+n_cols = n_sqrt if n_sqrt * n_sqrt == n_channels else n_channels // n_rows + (n_channels % n_rows > 0)
 
-# Labels and Title
-plt.xlabel("X Coordinate")
-plt.ylabel("Y Coordinate")
-plt.title("Scatter Plot of inputF[0]")
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 15))  # Adjust the subplot size if necessary
 
-# Show plot
-plt.grid(True)
+for i in range(n_channels):
+    ax = axes.flatten()[i]
+    if inputF[i].shape[1] == 2:
+        sc = ax.scatter(inputF[i][:, 0], inputF[i][:, 1], cmap='viridis', edgecolor='k', s=1)
+    else:
+        sc = ax.hexbin(inputF[i][:, 0], inputF[i][:, 1], C=inputF[i][:, 2], gridsize=50, cmap="viridis", reduce_C_function=np.mean)
+    ax.set_title(f'Channel {i}')
+    ax.set_xlabel('X Coordinate')
+    ax.set_ylabel('Y Coordinate')
+    fig.colorbar(sc, ax=ax, label=f'Channel {i} Value')
+
+plt.tight_layout()  # This will adjust spacing between subplots to minimize overlap
 plt.show()
+
