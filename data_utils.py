@@ -42,11 +42,11 @@ def get_dataset(args):
         test_path = "./data/heat2d_1100_test.pkl"
 
     elif args.dataset == "porousmelting3d":
-        #train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/train_1.pkl"
-        #test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/test_1.pkl"
         train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/train_1.pkl"
         test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/test_1.pkl"
     elif args.dataset == "porousmelting2d":
+        #train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/notime_train_1.pkl"
+        #test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/pickle_time10_res50/notime_test_1.pkl"
         train_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/notime_train_1.pkl"
         test_path = "/home/maoy/data/PorousMedia/meltingFoam/DL_workspace/data/debug_pickle/notime_test_1.pkl"
 
@@ -311,33 +311,6 @@ class MIODataset(DGLDataset):
         if not os.path.exists(self.cached_path):
             data_all = []
             data_all = pickle.load(open(self.data_path, "rb")) #[:16]
-            '''
-            # Your list of 2D coordinates
-            coordinates = data_all[0][0]
-            # Open a file in write mode
-            with open('x.dat', 'w') as file:
-                # Iterate through each coordinate and write it to the file
-                for coord in coordinates:
-                    file.write(f"{coord[0]} {coord[1]} {coord[2]} {coord[3]} {coord[4]} {coord[5]} {coord[6]} {coord[7]} {coord[8]}\n")
-
-            gts = data_all[0][1]
-            with open('gt.dat', 'w') as file:
-                # Iterate through each coordinate and write it to the file
-                for value in gts:
-                    file.write(f"{value[0]} {value[1]} {value[2]} {value[3]} {value[4]}\n")
-
-            # Your list of 2D coordinates
-            coordinates = data_all[0][3][0]
-            # Open a file in write mode
-            with open('input_f.dat', 'w') as file:
-                # Iterate through each coordinate and write it to the file
-                for coord in coordinates:
-                    file.write(f"{coord[0]} {coord[1]}\n")
-            '''
-            #print(f'{len(data_all[0][0])}{data_all[0][0]}')
-            #print(f'{data_all[0][1]}')
-            #print(f'{data_all[0][2]}')
-            #print(f'{len(data_all[0][3][0])} {data_all[0][3]}')
             print('Load dataset finished {}'.format(time.time()-time0))
             #### initialize dataset
             self.train = train
@@ -442,12 +415,12 @@ class MIODataset(DGLDataset):
             y_feats_all = torch.cat([g.ndata['y'] for g in self.graphs],dim=0)
             if self.normalize_y == 'unit':
                 self.y_normalizer = UnitTransformer(y_feats_all)
-                print(self.y_normalizer.mean, self.y_normalizer.std)
+                print(f'Y mean/std: {self.y_normalizer.mean.cpu().tolist()}, {self.y_normalizer.std.cpu().tolist()}')
                 print('Target features are normalized using unit transformer')
 
             elif self.normalize_y == 'minmax':
                 self.y_normalizer = MinMaxTransformer(y_feats_all)
-                print(self.y_normalizer.max, self.y_normalizer.min)
+                print(f'Y max/min: {self.y_normalizer.max.cpu().tolist()}, {self.y_normalizer.min.cpu().tolist()}')
                 print('Target features are normalized using minmax transformer')
 
             elif self.normalize_y == 'quantile':
@@ -470,15 +443,16 @@ class MIODataset(DGLDataset):
             if self.normalize_x == 'unit':
                 self.x_normalizer = UnitTransformer(x_feats_all)
                 self.up_normalizer = UnitTransformer(self.u_p)
-                print(self.x_normalizer.mean, self.x_normalizer.std)
+                print(f'X mean/std: {self.x_normalizer.mean.cpu().tolist()}, {self.x_normalizer.std.cpu().tolist()}')
                 print(self.up_normalizer.mean, self.up_normalizer.std)
+                print(f'up mean/std: {self.up_normalizer.mean.cpu().tolist()}, {self.up_normalizer.std.cpu().tolist()}')
                 print('Input features are normalized using unit transformer')
 
             elif self.normalize_x == 'minmax':
                 self.x_normalizer = MinMaxTransformer(x_feats_all)
                 self.up_normalizer = MinMaxTransformer(self.u_p)
-                print(self.x_normalizer.max, self.x_normalizer.min)
-                print(self.up_normalizer.max, self.up_normalizer.min)
+                print(f'X max/min: {self.x_normalizer.max.cpu().tolist()}, {self.x_normalizer.min.cpu().tolist()}')
+                print(f'up max/min: {self.up_normalizer.max.cpu().tolist()}, {self.up_normalizer.min.cpu().tolist()}')
                 print('Input features are normalized using minmax transformer')
 
             else:
@@ -582,7 +556,7 @@ class WeightedLpRelLoss(_WeightedLoss):
         self.sum_pool = SumPooling()
 
     ### all reduce is used in temporal cases, use only one metric for all components
-    def _lp_losses(self, g, pred, target, mask=None, mask_channels=None):
+    def _lp_losses(self, g, pred, target, mask=None, mask_channels=None, weighted=None):
         if (self.component == 'all') or (self.component == 'all-reduce'):
 
             N, C = pred.shape
@@ -603,13 +577,17 @@ class WeightedLpRelLoss(_WeightedLoss):
                 if mask is not None and mask_channels is not None and c in mask_channels:
                     # Apply mask only for specified channels
                     error = error * mask
-                    target_abs = target_abs * mask
+                    target_abs = target_abs
 
+                if weighted is not None:
+                    error = error * weighted[c]
                 # Perform sum pooling
                 err_pool = self.sum_pool(g, error)
                 target_pool = self.sum_pool(g, target_abs)
 
                 losses[:,c] = (err_pool / target_pool) ** (1 / self.p)
+                #print(err_pool)
+                #print(target_pool)
 
             if self.component == 'all':
                 metrics = losses.mean(dim=0).clone().detach().cpu().numpy()
@@ -627,16 +605,16 @@ class WeightedLpRelLoss(_WeightedLoss):
 
         return loss, metrics
 
-    def forward(self, g,  pred, target, mask=None, mask_channels=None):
+    def forward(self, g,  pred, target, mask=None, mask_channels=None, weighted=None):
 
         #### only for computing metrics
 
 
-        loss, metrics = self._lp_losses(g, pred, target, mask=mask, mask_channels = mask_channels)
+        loss, metrics = self._lp_losses(g, pred, target, mask=mask, mask_channels = mask_channels, weighted = weighted)
 
         if self.normalizer is not None:
             ori_pred, ori_target = self.normalizer.transform(pred,component=self.component,inverse=True), self.normalizer.transform(target, inverse=True)
-            _, metrics = self._lp_losses(g, ori_pred, ori_target, mask=mask, mask_channels = mask_channels)
+            _, metrics = self._lp_losses(g, ori_pred, ori_target, mask=mask, mask_channels = mask_channels, weighted = weighted)
 
         if self.regularizer:
             raise NotImplementedError
@@ -658,9 +636,34 @@ class WeightedLpLoss(_WeightedLoss):
         self.normalizer = normalizer
         self.avg_pool = AvgPooling()
 
-    def _lp_losses(self, g, pred, target):
+    def _lp_losses(self, g, pred, target, mask=None, mask_channels=None, weighted=None):
         if self.component == 'all':
-            losses = self.avg_pool(g, ((pred - target).abs() ** self.p)) ** (1 / self.p)
+            N, C = pred.shape
+            total_err_pool = 0
+            total_target_pool = 0
+
+            batch_size = g.batch_size
+            losses = torch.zeros(batch_size, C,device=pred.device)  # Store per-channel losses
+
+            for c in range(C):
+                pred_channel = pred[:, c]  # Extract current channel (batch, N)
+                target_channel = target[:, c]
+
+                # Compute element-wise absolute error
+                error = (pred_channel - target_channel).abs() ** self.p
+
+                if mask is not None and mask_channels is not None and c in mask_channels:
+                    # Apply mask only for specified channels
+                    error = error * mask
+
+                if weighted is not None:
+                    error = error * weighted[c]
+                # Perform sum pooling
+                err_pool = self.avg_pool(g, error)
+
+                losses[:,c] = (err_pool) ** (1 / self.p)
+
+            #losses = self.avg_pool(g, ((pred - target).abs() ** self.p)) ** (1 / self.p)
             metrics = losses.mean(dim=0).clone().detach().cpu().numpy()
 
         else:
@@ -672,15 +675,15 @@ class WeightedLpLoss(_WeightedLoss):
 
         return loss, metrics
 
-    def forward(self, g, pred, target):
+    def forward(self, g, pred, target, mask=None, mask_channels=None, weighted=None):
 
         #### only for computing metrics
 
-        loss, metrics = self._lp_losses(g, pred, target)
+        loss, metrics = self._lp_losses(g, pred, target, mask=mask, mask_channels = mask_channels, weighted = weighted)
 
         if self.normalizer is not None:
             ori_pred, ori_target = self.normalizer.transform(pred,component=self.component, inverse=True), self.normalizer.transform(target, inverse=True)
-            _, metrics = self._lp_losses(g, ori_pred, ori_target)
+            _, metrics = self._lp_losses(g, ori_pred, ori_target, mask=mask, mask_channels = mask_channels, weighted = weighted)
 
         if self.regularizer:
             raise NotImplementedError
